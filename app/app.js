@@ -180,7 +180,7 @@ async function carregar(){
   S.vendas = vendas.map(v => { const f = fMap[v.id]; const cl = v.cliente || {};
     return {id: v.id, data: v.data, mes: v.data.slice(0,7), semData: v.sem_data, cliente: {...cl, id: v.cliente_id || "", nome: cl.nome || "Cliente não informado", fone: cl.fone || "", cpf: cl.cpf || "", email: cl.email || "", end: cl.end || null},
       vendedor: v.vendedor || "", origem: v.origem || "", forma: v.forma, parcelas: v.parcelas, modo: v.modo, taxaPct: num(v.taxa_pct),
-      itens: (porVenda[v.id] || []).map(i => ({id: i.id, u: i.unidade_id, sku: i.sku_id, nome: i.nome, tipo: i.tipo, ident: i.ident || "", cond: i.cond, preco: num(i.preco), custo: custos ? (icMap[i.id] ?? 0) : null})),
+      itens: (porVenda[v.id] || []).map(i => ({id: i.id, brinde: !!i.brinde, u: i.unidade_id, sku: i.sku_id, nome: i.nome, tipo: i.tipo, ident: i.ident || "", cond: i.cond, preco: num(i.preco), custo: custos ? (icMap[i.id] ?? 0) : null})),
       troca: v.troca ? {...v.troca, valor: num(v.troca.valor)} : null,
       aPagar: num(v.a_pagar), clientePaga: num(v.cliente_paga), recebido: num(v.recebido), receita: num(v.receita),
       cmv: f ? num(f.cmv) : 0, taxaValor: f ? num(f.taxa_valor) : 0, lucro: f ? num(f.lucro) : 0, obs: v.obs || "", criado: v.criado_em}; })
@@ -269,7 +269,7 @@ function dre(m){
   });
   const totDesp = sum(Object.values(desp)), totPro = sum(Object.values(pro));
   const bruto = receita - cmv - taxas;
-  const itens = sum(vs.map(v => (v.itens||[]).length));
+  const itens = sum(vs.map(v => (v.itens||[]).filter(i => !i.brinde).length));
   return {vs, ls, receita, cmv, taxas, bruto, desp, pro, totDesp, totPro, entradas, itens, resultado: bruto + entradas - totDesp - totPro, margem: receita ? bruto/receita*100 : 0};
 }
 const formaNome = v => v.forma === "nao_informado" ? "Não informado" : v.forma === "credito" ? `Crédito ${v.parcelas}x` : v.forma === "debito" ? "Débito" : v.forma === "dinheiro" ? "Dinheiro" : "Pix";
@@ -594,7 +594,7 @@ function modalEditarUn(id){
 const SK = {q:""};
 function statsVendaSku(id){
   const pr = [];
-  S.vendas.forEach(v => (v.itens||[]).forEach(it => { if(it.sku === id) pr.push(Number(it.preco)||0); }));
+  S.vendas.forEach(v => (v.itens||[]).forEach(it => { if(it.sku === id && !it.brinde) pr.push(Number(it.preco)||0); }));
   return {n: pr.length, medio: avg(pr), ult: ultimoPreco(id)};
 }
 V.skus = {
@@ -702,7 +702,7 @@ function modalSku(id){
 }
 
 /* ---------- NOVA VENDA ---------- */
-const NV_PAD = () => ({itens:[], troca:null, forma:"pix", parc:12, modo:"repassa", cliente:"", fone:"", data:hoje(), obs:"", vendedor:"", origem:"", dados:null, maisAberto:false, feita:null});
+const NV_PAD = () => ({addBrinde:false, itens:[], troca:null, forma:"pix", parc:12, modo:"repassa", cliente:"", fone:"", data:hoje(), obs:"", vendedor:"", origem:"", dados:null, maisAberto:false, feita:null});
 const NV = NV_PAD();
 function novaVendaLimpa(){ Object.assign(NV, NV_PAD()); }
 V.venda = {
@@ -721,7 +721,9 @@ V.venda = {
             <div class="row"><div class="f"><label for="v-vend">Vendedor</label><input class="in" id="v-vend" list="v-vends" value="${esc(NV.vendedor)}" placeholder="Quem fechou a venda" autocomplete="off"><datalist id="v-vends">${[...new Set(S.vendas.map(v => v.vendedor).filter(Boolean))].map(n => `<option value="${esc(n)}">`).join("")}</datalist></div>
               <div class="f"><label for="v-orig">Como o cliente chegou</label><select class="in" id="v-orig"><option value="">Não informado</option>${ORIGENS.map(o => `<option ${NV.origem===o?"selected":""}>${o}</option>`).join("")}</select></div></div>
           </div></div>
-          <div class="card"><div class="card-h"><div class="step"><i>2</i><h2>Aparelhos vendidos</h2></div><button class="link" type="button" id="v-avulso">+ Item fora do estoque</button></div><div class="card-b form">
+          <div class="card"><div class="card-h"><div class="step"><i>2</i><h2>Produtos e brindes</h2></div><button class="link" type="button" id="v-avulso">+ Item fora do estoque</button></div><div class="card-b form">
+            <div class="seg" role="group" aria-label="Como adicionar" style="justify-self:start"><button type="button" data-addmodo="venda" aria-pressed="${!NV.addBrinde}">Vender</button><button type="button" data-addmodo="brinde" aria-pressed="${!!NV.addBrinde}">Dar de brinde</button></div>
+            <p class="sub" id="v-addh" style="margin:0">${NV.addBrinde ? "O que você escolher entra como brinde: sai do estoque, não é cobrado e o custo sai do lucro." : "Aparelhos e acessórios que o cliente está comprando."}</p>
             <input class="search" id="v-q" type="search" placeholder="Buscar no estoque por modelo, IMEI ou série" autocomplete="off" aria-label="Buscar aparelho no estoque">
             <div class="results" id="v-res"></div>
             <div class="form" id="v-itens" style="gap:8px"></div>
@@ -761,6 +763,10 @@ V.venda = {
     $("v-obs").oninput = () => { NV.obs = $("v-obs").value; };
     $("v-q").oninput = () => this.busca();
     $("v-avulso").onclick = () => modalAvulso();
+    document.querySelectorAll("[data-addmodo]").forEach(b => b.onclick = () => { NV.addBrinde = b.dataset.addmodo === "brinde";
+      document.querySelectorAll("[data-addmodo]").forEach(x => x.setAttribute("aria-pressed", x === b));
+      $("v-addh").textContent = NV.addBrinde ? "O que você escolher entra como brinde: sai do estoque, não é cobrado e o custo sai do lucro." : "Aparelhos e acessórios que o cliente está comprando.";
+      $("v-q").placeholder = NV.addBrinde ? "Buscar o brinde no estoque: capa, película, cabo…" : "Buscar no estoque por modelo, IMEI ou série"; $("v-q").focus(); });
     $("v-tem-troca").onchange = () => { const on = $("v-tem-troca").checked; $("v-troca").hidden = !on; NV.troca = on ? (NV.troca || {tipo:"imei"}) : null; up(); };
     if(NV.troca){ $("v-t-sku").value = NV.troca.nome||""; $("v-t-id").value = NV.troca.ident||""; $("v-t-val").value = NV.troca.valor ? R(NV.troca.valor) : ""; $("v-t-bat").value = NV.troca.bateria||""; }
     const ttipo = t => { if(NV.troca) NV.troca.tipo = t; document.querySelectorAll("[data-ttipo]").forEach(x => x.setAttribute("aria-pressed", x.dataset.ttipo===t)); };
@@ -792,7 +798,7 @@ V.venda = {
       return `<button type="button" class="res" data-sk="${k}"><span><b>${esc(skuNome(k))}</b><span class="sub">${[skuCod(k), g[k].length + (g[k].length===1 ? " disponível" : " disponíveis")].filter(Boolean).join(" · ")}</span></span><span class="nw">${S.verCustos ? "custo médio " + R(st.medioEst) : ""}</span></button>`; }).join("");
     el.innerHTML = html || `<div class="sub">Nada em estoque com “${esc($("v-q").value)}”. Use “Item fora do estoque” se for vender sem SKU.</div>`;
     const add = u => {
-      NV.itens.push({u: u.id, sku: u.sku, nome: skuNome(u.sku), tipo: u.tipo, ident: u.ident, custo: r2(statsSku(u.sku).medioEst || Number(u.custo) || 0), cond: u.cond||"lacrado", preco: 0});
+      NV.itens.push({u: u.id, sku: u.sku, nome: skuNome(u.sku), tipo: u.tipo, ident: u.ident, custo: r2(statsSku(u.sku).medioEst || Number(u.custo) || 0), cond: u.cond||"lacrado", preco: 0, brinde: !!NV.addBrinde});
       $("v-q").value = ""; this.itens(); this.busca();
       const ins = document.querySelectorAll("[data-preco]"); ins.length && ins[ins.length-1].focus();
     };
@@ -803,6 +809,9 @@ V.venda = {
     const el = $("v-itens"); if(!el) return;
     el.innerHTML = NV.itens.map((it,i) => {
       const ult = ultimoPreco(it.sku);
+      if(it.brinde) return `<div class="item"><div><b>${esc(it.nome)}</b> <span class="tag t-ok">Brinde</span><span class="sub">${it.u ? esc(identFmt(it) || "Do estoque") : "Fora do estoque"}${S.verCustos === false ? "" : " · custo " + R(it.custo) + " sai do lucro"}</span></div>
+        <span class="sub" style="display:block;text-align:right">sem cobrar</span>
+        <button class="x" type="button" data-rm="${i}" aria-label="Remover brinde">×</button></div>`;
       return `<div class="item"><div><b>${esc(it.nome)}</b><span class="sub">${it.u ? esc(identFmt(it) || "Do estoque") : "Fora do estoque"}${S.verCustos ? (it.u ? " · custo médio " : " · custo ") + R(it.custo) : ""}${ult ? ` · última venda ${R(ult)}` : ""}</span></div>
         <input class="in" data-preco="${i}" inputmode="numeric" placeholder="Preço de venda" aria-label="Preço de venda" value="${it.preco ? R(it.preco) : ""}">
         <button class="x" type="button" data-rm="${i}" aria-label="Remover item">×</button></div>`;
@@ -819,14 +828,16 @@ V.venda = {
     const deb = $("v-deb-h"); if(deb) deb.textContent = S.taxas.deb == null ? "Taxa do débito ainda não informada em Taxas. Por enquanto conta como 0%." : `Taxa do débito: ${P(S.taxas.deb)}, descontada do seu lucro.`;
     const erros = [];
     if(!NV.itens.length) erros.push("Adicione pelo menos um aparelho.");
-    if(NV.itens.some(i => !i.preco)) erros.push("Informe o preço de venda de cada item.");
+    if(!NV.itens.some(i => !i.brinde)) erros.push("Adicione o produto vendido, além dos brindes.");
+    if(NV.itens.some(i => !i.brinde && !i.preco)) erros.push("Informe o preço de venda de cada item.");
     if(!NV.cliente.trim()) erros.push("Informe o nome do cliente.");
     const ec = $("v-cpf") ? cliValido("v") : ""; if(ec) erros.push(ec);
     if(NV.troca && (!NV.troca.nome || !NV.troca.nome.trim() || !NV.troca.ident || !NV.troca.valor)) erros.push("Complete os dados do aparelho na troca.");
     if(NV.troca && NV.troca.ident && S.un.some(u => norm(u.ident) === norm(NV.troca.ident))) erros.push("O aparelho da troca já está cadastrado no estoque.");
     if(troca > totItens && totItens) erros.push("O valor da troca é maior que o total dos itens.");
     el.innerHTML = `
-      <div class="sumrow"><span>Itens (${NV.itens.length})</span><b>${R(totItens)}</b></div>
+      <div class="sumrow"><span>Itens (${NV.itens.filter(i => !i.brinde).length})</span><b>${R(totItens)}</b></div>
+      ${NV.itens.some(i => i.brinde) ? `<div class="sumrow"><span>Brindes (${NV.itens.filter(i => i.brinde).length})</span><b>sem cobrar</b></div>` : ""}
       ${troca ? `<div class="sumrow"><span>Aparelho na troca</span><b>− ${R(troca)}</b></div>` : ""}
       <div class="sumrow big"><span>Cliente paga</span><b>${R(pg.clientePaga)}</b></div>
       ${NV.forma==="credito" && pg.clientePaga ? `<div class="sumrow"><span>${NV.parc}x de</span><b>${R(pg.clientePaga/NV.parc)}</b></div>` : ""}
@@ -843,26 +854,30 @@ V.venda = {
   }
 };
 function ultimoPreco(sku){
-  for(const v of S.vendas) for(const it of (v.itens||[])) if(it.sku === sku && it.preco) return it.preco;
+  for(const v of S.vendas) for(const it of (v.itens||[])) if(it.sku === sku && it.preco && !it.brinde) return it.preco;
   return 0;
 }
 function modalAvulso(){
   abrirModal("Item fora do estoque", `<form class="form" id="m-form" autocomplete="off"><p class="sub" style="margin:0">Para vender algo sem tirar do estoque: encomendas, vendas antigas ou produtos sem SKU. Não precisa ter SKU.</p>
       <div class="f"><label for="a-sku">Produto</label><input class="in" id="a-sku" list="a-skus" autocomplete="off" placeholder="Ex.: iPhone 14 128 GB"><datalist id="a-skus">${Object.values(S.skus).map(s => `<option value="${esc(s.nome)}">`).join("")}</datalist><span class="hint" id="a-skuh">Se escrever o nome de um SKU, a venda entra na média dele.</span></div>
       <div class="row"><div class="f" ${S.verCustos ? "" : "hidden"}><label for="a-custo">Custo</label><input class="in" id="a-custo" inputmode="numeric" placeholder="R$ 0,00"></div><div class="f"><label for="a-preco">Preço de venda</label><input class="in" id="a-preco" inputmode="numeric" placeholder="R$ 0,00"></div></div>
-      <div class="f"><label for="a-id">IMEI ou série (opcional)</label><input class="in" id="a-id" autocomplete="off"></div><div id="a-msg"></div></form>`,
+      <div class="f"><label for="a-id">IMEI ou série (opcional)</label><input class="in" id="a-id" autocomplete="off"></div>
+      <label class="check"><input type="checkbox" id="a-brinde" ${NV.addBrinde ? "checked" : ""}> É brinde (não cobrar do cliente)</label><div id="a-msg"></div></form>`,
     `<button class="btn btn-ghost" type="button" data-close>Cancelar</button><button class="btn btn-gold" type="button" id="a-ok">Adicionar à venda</button>`,
     () => {
       maskMoney($("a-custo")); maskMoney($("a-preco"));
+      const brindeUI = () => { const b = $("a-brinde").checked; $("a-preco").closest(".f").hidden = b; $("a-id").closest(".f").hidden = b; };
+      $("a-brinde").onchange = brindeUI; brindeUI();
       $("a-sku").oninput = () => { const s = skuPorNome($("a-sku").value);
         $("a-skuh").textContent = s ? `${skuCod(s.id) || "SKU"} encontrado. Custo médio ${R(statsSku(s.id).medioEst || statsSku(s.id).medioHist)}.` : $("a-sku").value.trim() ? "Sem SKU. A venda entra normalmente no mês." : "Se escrever o nome de um SKU, a venda entra na média dele.";
         if(s && !$("a-custo").value){ const st = statsSku(s.id); if(st.medioEst || st.medioHist) $("a-custo").value = R(r2(st.medioEst || st.medioHist)); } };
       const ok = () => {
         const nome = $("a-sku").value.trim().replace(/\s+/g," "), custo = parseMoney($("a-custo").value), preco = parseMoney($("a-preco").value);
-        if(!nome || !preco) return $("a-msg").innerHTML = `<div class="msg bad">Preencha o produto e o preço de venda.</div>`;
+        const ehBrinde = $("a-brinde").checked;
+        if(!nome || (!preco && !ehBrinde)) return $("a-msg").innerHTML = `<div class="msg bad">${ehBrinde ? "Preencha o nome do brinde." : "Preencha o produto e o preço de venda."}</div>`;
         if(!custo && S.verCustos) return $("a-msg").innerHTML = `<div class="msg bad">Informe o custo para o lucro sair certo.</div>`;
         const s = skuPorNome(nome), ident = $("a-id").value.trim();
-        NV.itens.push({u:null, sku: s ? s.id : null, nome: s ? s.nome : nome, tipo: ident && soDig(ident).length===15 ? "imei" : "serie", ident, custo, cond:"lacrado", preco});
+        NV.itens.push({u:null, sku: s ? s.id : null, nome: s ? s.nome : nome, tipo: ident && soDig(ident).length===15 ? "imei" : "serie", ident: ehBrinde ? "" : ident, custo, cond:"lacrado", preco: ehBrinde ? 0 : preco, brinde: ehBrinde});
         fecharModal(); V.venda.itens(); V.venda.busca();
       };
       $("a-ok").onclick = ok; $("m-form").onsubmit = e => { e.preventDefault(); ok(); };
@@ -882,7 +897,7 @@ async function registrarVenda(c){
       cliente: {id: cli ? cli.id : "", nome: NV.cliente.trim(), fone: tel, cpf: dd.cpf, email: dd.email, endereco: temEnd ? dd.end : null},
       vendedor: NV.vendedor.trim(), origem: NV.origem, obs: NV.obs.trim(),
       forma: NV.forma, parcelas: NV.forma === "credito" ? NV.parc : 1, modo: NV.forma === "credito" ? NV.modo : null,
-      itens: NV.itens.map(i => i.u ? {unidade_id: i.u, preco: i.preco} : {sku_id: i.sku || "", nome: i.nome, tipo: i.tipo, ident: i.ident, cond: i.cond, preco: i.preco, ...(S.verCustos ? {custo: i.custo} : {})}),
+      itens: NV.itens.map(i => i.u ? {unidade_id: i.u, preco: i.brinde ? 0 : i.preco, brinde: !!i.brinde} : {brinde: !!i.brinde, sku_id: i.sku || "", nome: i.nome, tipo: i.tipo, ident: i.ident, cond: i.cond, preco: i.preco, ...(S.verCustos ? {custo: i.custo} : {})}),
       troca: NV.troca ? {nome: NV.troca.nome.trim(), tipo: NV.troca.tipo || "imei", ident: NV.troca.ident || "", valor: NV.troca.valor || 0, bateria: NV.troca.bateria || ""} : null
     };
     const id = await rpc("registrar_venda", {p_empresa: S.emp.id, p: payload});
@@ -897,12 +912,14 @@ function textoRecibo(v){
   const L = [], nome = (v.cliente && v.cliente.nome || "").split(" ")[0];
   L.push(`Olá${nome ? ", "+nome : ""}! Obrigado por comprar na ${S.emp ? S.emp.nome : "nossa loja"}.`); L.push("");
   L.push(v.semData ? "*Resumo da sua compra*" : `*Resumo da sua compra* (${dataBR(v.data)})`);
-  (v.itens||[]).forEach(i => L.push(`• ${itNome(i)}${i.ident ? " · "+(i.tipo==="serie"?"Série ":"IMEI ")+i.ident : ""}: ${R(i.preco)}`));
+  (v.itens||[]).filter(i => !i.brinde).forEach(i => L.push(`• ${itNome(i)}${i.ident ? " · "+(i.tipo==="serie"?"Série ":"IMEI ")+i.ident : ""}: ${R(i.preco)}`));
+  const br = (v.itens||[]).filter(i => i.brinde);
+  if(br.length) L.push(`🎁 Brinde${br.length > 1 ? "s" : ""}: ${br.map(itNome).join(", ")}`);
   if(v.troca) L.push(`Seu aparelho na troca (${v.troca.nome}): −${R(v.troca.valor)}`);
   L.push("");
   if(v.forma === "credito") L.push(`Pagamento: cartão de crédito em ${v.parcelas}x de ${R(v.clientePaga/v.parcelas)} (total ${R(v.clientePaga)})`);
   else L.push(`Pagamento: ${formaNome(v).toLowerCase() === "pix" ? "Pix" : formaNome(v)}, ${R(v.clientePaga)}`);
-  if((v.itens||[]).some(i => i.cond !== "seminovo")) { L.push(""); L.push("Produto lacrado, com garantia total da Apple."); }
+  if((v.itens||[]).some(i => !i.brinde && i.cond !== "seminovo")) { L.push(""); L.push("Produto lacrado, com garantia total da Apple."); }
   L.push(""); L.push("Qualquer dúvida, estamos à disposição.");
   return L.join("\n");
 }
@@ -911,11 +928,11 @@ function vendaFeitaHtml(){
   return `<div class="head"><div><h1>Venda registrada</h1><p>${esc(v.cliente.nome)} · ${dataBR(v.data)}${S.verCustos ? " · lucro de " + R(v.lucro) : ""}</p></div><div class="acts"><button class="btn btn-gold" type="button" id="f-nova">+ Nova venda</button></div></div>
     <div class="grid2"><div class="card"><div class="card-h"><h2>Mensagem para o cliente</h2><p>Revise e envie pelo WhatsApp</p></div><div class="card-b form">
       <textarea class="receipt" id="f-txt">${esc(textoRecibo(v))}</textarea>
-      <div class="acts"><a class="btn btn-wa" id="f-wa" target="_blank" rel="noopener" href="${waLink(v.cliente.fone, textoRecibo(v))}">${ic("wa")} Abrir no WhatsApp</a><button class="btn btn-ghost" type="button" id="f-copy">${ic("copy")} Copiar</button></div>
+      <div class="acts"><button class="btn btn-gold" type="button" id="f-termo">Termo de entrega</button><a class="btn btn-wa" id="f-wa" target="_blank" rel="noopener" href="${waLink(v.cliente.fone, textoRecibo(v))}">${ic("wa")} Abrir no WhatsApp</a><button class="btn btn-ghost" type="button" id="f-copy">${ic("copy")} Copiar</button></div>
       ${v.cliente.fone ? `<p class="sub">Enviando para ${esc(fone(v.cliente.fone))}.</p>` : `<p class="sub">Sem número cadastrado: o WhatsApp vai pedir para escolher o contato.</p>`}
     </div></div>
     <div class="card"><div class="card-h"><h2>O que mudou no sistema</h2></div><div class="att">
-      ${(v.itens||[]).map(i => `<div class="it"><div><b>${esc(i.nome)}</b><span class="sub">${i.u ? "Saiu do estoque" : "Lançado fora do estoque"}</span></div><span class="tag t-ok">${R(i.preco)}</span></div>`).join("")}
+      ${(v.itens||[]).map(i => `<div class="it"><div><b>${esc(i.nome)}</b><span class="sub">${i.u ? "Saiu do estoque" : "Lançado fora do estoque"}</span></div><span class="tag t-ok">${i.brinde ? "Brinde" : R(i.preco)}</span></div>`).join("")}
       ${v.troca ? `<div class="it"><div><b>${esc(v.troca.nome)}</b><span class="sub">Entrou no estoque como seminovo, custo ${R(v.troca.valor)}</span></div><span class="tag t-lac">Troca</span></div>` : ""}
       ${S.verCustos ? `<div class="it"><div><b>Lucro da venda</b><span class="sub">Somado em Vendas do mês e no Financeiro</span></div><b style="color:var(--gold-ink)">${R(v.lucro)}</b></div>` : ""}
     </div></div></div>`;
@@ -924,6 +941,7 @@ function bindVendaFeita(){
   $("f-nova").onclick = () => { novaVendaLimpa(); go("venda"); };
   $("f-txt").oninput = () => { $("f-wa").href = waLink(NV.feita.cliente.fone, $("f-txt").value); };
   $("f-copy").onclick = () => copiar($("f-txt").value, $("f-txt"));
+  $("f-termo").onclick = () => abrirTermo(NV.feita);
 }
 
 
@@ -1033,6 +1051,89 @@ function montarOrcamento(o){
   return L.join("\n");
 }
 
+
+/* ---------- TERMO DE ENTREGA ---------- */
+function lojaInfo(){
+  if(typeof S !== "undefined" && S.emp) return {nome: S.emp.nome, fone: S.emp.whatsapp || "", logo: S.emp.logo || "", cor: S.emp.cor || "#D5951D"};
+  const img = document.querySelector(".mobtop img");
+  return {nome: "South Import's", fone: "51992191293", logo: img ? img.src : "", cor: "#D5951D"};
+}
+function termoHtml(v){
+  const L = lojaInfo(), c = v.cliente || {}, it = (v.itens||[]).filter(i => !i.brinde), br = (v.itens||[]).filter(i => i.brinde);
+  const num = String(v.id || "").replace(/[^a-z0-9]/gi, "").slice(-6).toUpperCase();
+  const pag = v.forma === "credito" ? `Cartão de crédito em ${v.parcelas}x de ${R(v.clientePaga/v.parcelas)}` : formaNome(v);
+  const lac = it.some(i => i.cond !== "seminovo"), semi = it.some(i => i.cond === "seminovo");
+  const linhaCli = [c.cpf ? "CPF " + cpfFmt(c.cpf) : "", c.fone ? fone(c.fone) : "", c.email || ""].filter(Boolean).join(" · ");
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Termo de entrega ${esc(num)} · ${esc(L.nome)}</title>
+<style>@page{size:A4;margin:16mm}*{box-sizing:border-box}body{margin:0;font:13.5px/1.5 -apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:#17171a;background:#f3f2ef}
+.folha{max-width:800px;margin:24px auto;background:#fff;padding:44px 48px;border-radius:10px;box-shadow:0 6px 30px rgba(0,0,0,.08)}
+header{display:flex;justify-content:space-between;align-items:center;gap:20px;padding-bottom:18px;border-bottom:2px solid ${esc(L.cor)}}
+.marca{display:flex;align-items:center;gap:14px}.marca img{max-height:58px;max-width:120px}.marca b{font-size:20px;letter-spacing:-.01em}.marca small{display:block;color:#6c6b70;font-size:12px}
+.doc{text-align:right}.doc h1{margin:0;font-size:17px;letter-spacing:.02em;text-transform:uppercase}.doc span{color:#6c6b70;font-size:12px}
+h2{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#6c6b70;margin:26px 0 8px}
+.cli b{font-size:15px}.cli div{color:#45444a}
+table{width:100%;border-collapse:collapse}th{text-align:left;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#6c6b70;border-bottom:1px solid #ddd;padding:8px 6px}
+td{padding:10px 6px;border-bottom:1px solid #eee;vertical-align:top}td.r,th.r{text-align:right}.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:#45444a}
+.tag{display:inline-block;font-size:10.5px;font-weight:700;padding:1px 8px;border-radius:20px;background:#f1efe9;color:#6c6b70}
+.brinde{background:#e8f4ec;color:#1b7a4a}
+.tot{display:flex;justify-content:flex-end;margin-top:10px}.tot div{min-width:280px}.tot p{display:flex;justify-content:space-between;margin:4px 0}.tot p.big{font-size:16px;font-weight:700;border-top:1px solid #ddd;padding-top:8px;margin-top:8px}
+.gar{background:#faf8f3;border-left:3px solid ${esc(L.cor)};padding:12px 16px;border-radius:6px}.gar p{margin:4px 0}
+.decl{margin-top:22px;color:#45444a}
+.ass{display:grid;grid-template-columns:1fr 1fr;gap:48px;margin-top:64px}.ass div{border-top:1px solid #17171a;padding-top:8px;text-align:center;font-size:12px}.ass small{display:block;color:#6c6b70}
+footer{margin-top:34px;text-align:center;color:#8d8c92;font-size:11px}
+.bar{max-width:800px;margin:16px auto 0;display:flex;justify-content:flex-end;gap:8px}.bar button{font:600 14px inherit;padding:10px 18px;border-radius:10px;border:0;background:#17171a;color:#fff;cursor:pointer}
+@media print{body{background:#fff}.folha{margin:0;box-shadow:none;padding:0;max-width:none}.bar{display:none}}
+@media (max-width:640px){.folha{padding:24px 18px;margin:0;border-radius:0}.ass{grid-template-columns:1fr;gap:40px}header{flex-direction:column;align-items:flex-start}.doc{text-align:left}}</style></head><body>
+<div class="bar"><button onclick="window.print()">Imprimir ou salvar em PDF</button></div>
+<div class="folha">
+<header><div class="marca">${L.logo ? `<img src="${esc(L.logo)}" alt="">` : ""}<div><b>${esc(L.nome)}</b>${L.fone ? `<small>WhatsApp ${esc(fone(L.fone))}</small>` : ""}</div></div>
+<div class="doc"><h1>Termo de entrega</h1><span>Nº ${esc(num)} · ${v.semData ? "outubro de 2026" : dataBR(v.data)}</span></div></header>
+<h2>Cliente</h2><div class="cli"><b>${esc(c.nome || "Cliente")}</b>${linhaCli ? `<div>${esc(linhaCli)}</div>` : ""}${endTxt(c.end) ? `<div>${esc(endTxt(c.end))}</div>` : ""}</div>
+<h2>Produtos entregues</h2>
+<table><thead><tr><th>Produto</th><th>Identificação</th><th>Condição</th><th class="r">Valor</th></tr></thead><tbody>
+${it.map(i => `<tr><td><b>${esc(itNome(i))}</b></td><td class="mono">${i.ident ? (i.tipo === "serie" ? "Série " : "IMEI ") + esc(i.ident) : "—"}</td><td><span class="tag">${i.cond === "seminovo" ? "Seminovo" : "Lacrado"}</span></td><td class="r">${R(i.preco)}</td></tr>`).join("")}
+${br.map(i => `<tr><td><b>${esc(itNome(i))}</b></td><td class="mono">—</td><td><span class="tag brinde">Brinde</span></td><td class="r">cortesia</td></tr>`).join("")}
+</tbody></table>
+<div class="tot"><div>
+<p><span>Produtos</span><span>${R(v.receita)}</span></p>
+${v.troca ? `<p><span>Aparelho na troca (${esc(v.troca.nome)}${v.troca.ident ? " · " + esc(v.troca.ident) : ""})</span><span>− ${R(v.troca.valor)}</span></p>` : ""}
+<p class="big"><span>Total pago</span><span>${R(v.clientePaga)}</span></p>
+<p><span>Forma de pagamento</span><span>${esc(pag)}</span></p>
+</div></div>
+<h2>Garantia</h2><div class="gar">
+${lac ? `<p><b>Produtos lacrados:</b> garantia total da Apple, a partir da data de ativação.</p>` : ""}
+${semi ? `<p><b>Aparelhos seminovos:</b> garantia da loja nas condições combinadas no atendimento.</p>` : ""}
+${br.length ? `<p><b>Brindes:</b> cortesia da loja, sem valor comercial nesta venda.</p>` : ""}
+<p>A garantia não cobre quedas, contato com líquidos, mau uso ou abertura do aparelho por terceiros.</p></div>
+<p class="decl">Declaro que recebi os produtos acima em perfeito estado, conferi o funcionamento e a identificação de cada aparelho, e estou de acordo com as condições deste termo.</p>
+<div class="ass"><div>${esc(c.nome || "Cliente")}<small>Cliente${c.cpf ? " · CPF " + esc(cpfFmt(c.cpf)) : ""}</small></div><div>${esc(L.nome)}<small>${esc(v.vendedor || "Responsável pela entrega")}</small></div></div>
+<footer>${esc(L.nome)} · Termo gerado em ${dataBR(hoje())}</footer>
+</div></body></html>`;
+}
+function abrirTermo(v){
+  const html = termoHtml(v), nomeArq = "termo-entrega-" + norm((v.cliente && v.cliente.nome) || "cliente").replace(/[^a-z0-9]+/g, "-") + ".html";
+  abrirModal("Termo de entrega", `<iframe title="Termo de entrega" id="tm-frame" style="width:100%;height:60vh;border:1px solid var(--line);border-radius:10px;background:#fff"></iframe>
+    <p class="sub" id="tm-h" style="margin:10px 0 0">${"saas" === "saas" ? "Abra para imprimir ou salvar em PDF e colher a assinatura do cliente." : "Baixe o termo, abra o arquivo no navegador e use “Imprimir ou salvar em PDF”."}</p>`,
+    `<button class="btn btn-ghost" type="button" data-close>Fechar</button><div class="acts"><button class="btn btn-gold" type="button" id="tm-ok">${"saas" === "saas" ? "Abrir para imprimir" : "Baixar termo"}</button></div>`,
+    () => {
+      const f = $("tm-frame"); f.srcdoc = html.replace('<div class="bar">', '<div class="bar" style="display:none">');
+      $("tm-ok").onclick = async () => {
+        if("saas" === "saas"){
+          const w = window.open("", "_blank");
+          if(w){ w.document.open(); w.document.write(html); w.document.close(); setTimeout(() => { try{ w.focus(); w.print(); }catch(e){} }, 400); }
+          else { try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(e){ toast("Libere as janelas pop-up para imprimir."); } }
+          return;
+        }
+        try{
+          const dl = window.claude && await window.claude.use("downloads");
+          if(!dl) return toast("Não consegui baixar aqui. Use o Copiar no recibo.");
+          await dl.save({filename: nomeArq, data: new Blob([html], {type: "text/html"})});
+          toast("Termo baixado. Abra o arquivo para imprimir ou salvar em PDF.");
+        }catch(e){ if(!e || e.code !== "declined") toast("Não consegui baixar o termo agora."); }
+      };
+    });
+}
+
 /* ---------- VENDAS DO MÊS ---------- */
 V.vendas = {
   mount(){
@@ -1055,11 +1156,12 @@ V.vendas = {
       <div class="kpi hl"><small>Lucro bruto</small><b>${R(d.bruto)}</b><span>margem ${P(d.margem)}</span></div>`;
     if(!carregado()) return;
     const g = {};
-    d.vs.forEach(v => (v.itens||[]).forEach(it => { const k = it.sku; (g[k] = g[k] || {nome: it.nome, precos:[], custos:[]}); g[k].precos.push(Number(it.preco)||0); g[k].custos.push(Number(it.custo)||0); }));
+    const brindesMes = []; d.vs.forEach(v => (v.itens||[]).forEach(it => { if(it.brinde){ brindesMes.push(it); return; } const k = it.sku; (g[k] = g[k] || {nome: it.nome, precos:[], custos:[]}); g[k].precos.push(Number(it.preco)||0); g[k].custos.push(Number(it.custo)||0); }));
     const ks = Object.keys(g).sort((a,b) => sum(g[b].precos) - sum(g[a].precos));
     $("vm-sku").innerHTML = ks.length ? ks.map(k => { const x = g[k], luc = sum(x.precos) - sum(x.custos);
       return `<tr><td><b>${esc(S.skus[k] ? S.skus[k].nome : x.nome)}</b>${skuCod(k) ? `<span class="sub">${skuCod(k)}</span>` : ""}</td><td class="r"><b>${x.precos.length}</b></td><td><div class="prices">${x.precos.map(p => `<span>${R(p)}</span>`).join("")}</div></td><td class="r nw">${R(avg(x.precos))}</td><td class="r nw">${R(avg(x.custos))}</td><td class="r nw"><b>${R(luc)}</b></td></tr>`; }).join("") +
-      `<tr><td><b>Total</b></td><td class="r"><b>${d.itens}</b></td><td class="sub">sem descontar taxas de cartão</td><td></td><td></td><td class="r nw"><b>${R(d.receita - d.cmv)}</b></td></tr>`
+      `<tr><td><b>Total</b></td><td class="r"><b>${d.itens}</b></td><td class="sub">sem descontar taxas de cartão</td><td></td><td></td><td class="r nw"><b>${R(d.receita - d.cmv)}</b></td></tr>` +
+      (brindesMes.length ? `<tr><td><b>Brindes dados</b><span class="sub">${esc([...new Set(brindesMes.map(itNome))].join(", "))}</span></td><td class="r">${brindesMes.length}</td><td class="sub">sem cobrar do cliente</td><td></td><td class="r nw">${R(avg(brindesMes.map(i => Number(i.custo)||0)))}</td><td class="r nw neg">− ${R(sum(brindesMes.map(i => i.custo)))}</td></tr>` : "")
       : `<tr><td colspan="6" class="empty"><b>Nenhuma venda em ${mesNome(S.mes)}</b>Registre em Nova venda. Para lançar vendas antigas, mude a data da venda.</td></tr>`;
     const agrupa = (campo, el) => { const g = {}; d.vs.forEach(v => { const k = v[campo] || "Não informado"; const x = g[k] = g[k] || {n:0, rec:0, luc:0}; x.n++; x.rec += Number(v.receita)||0; x.luc += Number(v.lucro)||0; });
       const ks = Object.keys(g).sort((a,b) => g[b].luc - g[a].luc);
@@ -1089,8 +1191,8 @@ function modalRecibo(id){
   const cdados = [v.cliente.cpf ? "CPF "+cpfFmt(v.cliente.cpf) : "", v.cliente.email || "", endTxt(v.cliente.end)].filter(Boolean);
   abrirModal("Recibo · "+esc(v.cliente.nome), `${cdados.length ? `<p class="sub" style="margin:0 0 12px">${cdados.map(esc).join("<br>")}</p>` : ""}<textarea class="receipt" id="r-txt">${esc(t)}</textarea>
     <div class="row" style="margin-top:14px"><div class="sumrow"><span>Você recebeu</span><b>${R(v.recebido)}</b></div><div class="sumrow"><span>Lucro</span><b style="color:var(--gold-ink)">${R(v.lucro)}</b></div></div>`,
-    `<button class="btn btn-ghost" type="button" id="r-copy">${ic("copy")} Copiar</button><a class="btn btn-wa" id="r-wa" target="_blank" rel="noopener" href="${waLink(v.cliente.fone, t)}">${ic("wa")} Abrir no WhatsApp</a>`,
-    () => { $("r-copy").onclick = () => copiar($("r-txt").value, $("r-txt")); $("r-txt").oninput = () => $("r-wa").href = waLink(v.cliente.fone, $("r-txt").value); });
+    `<button class="btn btn-gold" type="button" id="r-termo">Termo de entrega</button><button class="btn btn-ghost" type="button" id="r-copy">${ic("copy")} Copiar</button><a class="btn btn-wa" id="r-wa" target="_blank" rel="noopener" href="${waLink(v.cliente.fone, t)}">${ic("wa")} Abrir no WhatsApp</a>`,
+    () => { $("r-termo").onclick = () => { fecharModal(); abrirTermo(v); }; $("r-copy").onclick = () => copiar($("r-txt").value, $("r-txt")); $("r-txt").oninput = () => $("r-wa").href = waLink(v.cliente.fone, $("r-txt").value); });
 }
 
 /* ---------- FINANCEIRO ---------- */

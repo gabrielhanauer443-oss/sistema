@@ -153,6 +153,7 @@ create table public.venda_itens (
   ident text default '',
   cond text default 'lacrado',
   preco numeric(12,2) not null default 0 check (preco >= 0),
+  brinde boolean not null default false,
   ordem int not null default 0,
   unique (id, empresa_id),
   foreign key (venda_id, empresa_id) references public.vendas(id, empresa_id) on delete cascade,
@@ -442,7 +443,7 @@ declare
   v_forma text := coalesce(p->>'forma', 'pix'); v_parc int := greatest(1, least(coalesce((p->>'parcelas')::int, 1), 18));
   v_modo text := coalesce(p->>'modo', 'repassa'); v_taxas jsonb; v_data date := coalesce((p->>'data')::date, current_date);
   v_ve_custo boolean := public.ve_custos(p_empresa); v_ordem int := 0; v_sku uuid; v_tsku uuid; v_tun uuid; v_tident text;
-  medios jsonb := '{}'::jsonb;
+  medios jsonb := '{}'::jsonb; v_brinde boolean; v_preco numeric;
 begin
   if not public.pode_escrever(p_empresa) then raise exception 'O período de teste acabou ou você não tem acesso a esta loja.'; end if;
   if jsonb_array_length(coalesce(p->'itens','[]'::jsonb)) = 0 then raise exception 'Adicione pelo menos um item.'; end if;
@@ -485,13 +486,15 @@ begin
   for v_it in select * from jsonb_array_elements(p->'itens') loop
     if coalesce((v_it->>'preco')::numeric, 0) < 0 or coalesce((v_it->>'custo')::numeric, 0) < 0 then raise exception 'Preço ou custo inválido.'; end if;
     v_ordem := v_ordem + 1;
+    v_brinde := coalesce((v_it->>'brinde')::boolean, false);
+    v_preco := case when v_brinde then 0 else round(coalesce((v_it->>'preco')::numeric,0),2) end;
     if coalesce(v_it->>'unidade_id','') <> '' then
       select * into v_un from unidades where id = (v_it->>'unidade_id')::uuid and empresa_id = p_empresa for update;
       if not found then raise exception 'Aparelho não encontrado no estoque.'; end if;
       if v_un.status <> 'estoque' then raise exception 'Um dos aparelhos já foi vendido. Atualize a página.'; end if;
       v_custo := coalesce((medios->>(v_un.sku_id::text))::numeric, 0);
-      insert into venda_itens (venda_id, empresa_id, unidade_id, sku_id, nome, tipo, ident, cond, preco, ordem)
-      values (v_venda, p_empresa, v_un.id, v_un.sku_id, (select nome from skus where id = v_un.sku_id), v_un.tipo, v_un.ident, v_un.cond, round(coalesce((v_it->>'preco')::numeric,0),2), v_ordem)
+      insert into venda_itens (venda_id, empresa_id, unidade_id, sku_id, nome, tipo, ident, cond, preco, brinde, ordem)
+      values (v_venda, p_empresa, v_un.id, v_un.sku_id, (select nome from skus where id = v_un.sku_id), v_un.tipo, v_un.ident, v_un.cond, v_preco, v_brinde, v_ordem)
       returning id into v_item;
       update unidades set status = 'vendido', venda_id = v_venda, saida = v_data where id = v_un.id;
     else
@@ -500,13 +503,13 @@ begin
       if v_ve_custo and (v_it ? 'custo') then v_custo := round(coalesce((v_it->>'custo')::numeric, 0), 2);
       elsif v_sku is not null then v_custo := public.custo_medio(v_sku);
       else v_custo := 0; end if;
-      insert into venda_itens (venda_id, empresa_id, unidade_id, sku_id, nome, tipo, ident, cond, preco, ordem)
+      insert into venda_itens (venda_id, empresa_id, unidade_id, sku_id, nome, tipo, ident, cond, preco, brinde, ordem)
       values (v_venda, p_empresa, null, v_sku, coalesce(nullif(trim(v_it->>'nome'),''), (select nome from skus where id = v_sku), 'Produto'),
-              coalesce(v_it->>'tipo','serie'), coalesce(v_it->>'ident',''), coalesce(v_it->>'cond','lacrado'), round(coalesce((v_it->>'preco')::numeric,0),2), v_ordem)
+              coalesce(v_it->>'tipo','serie'), coalesce(v_it->>'ident',''), coalesce(v_it->>'cond','lacrado'), v_preco, v_brinde, v_ordem)
       returning id into v_item;
     end if;
     insert into venda_itens_custo (item_id, empresa_id, custo) values (v_item, p_empresa, v_custo);
-    v_receita := v_receita + round(coalesce((v_it->>'preco')::numeric,0),2);
+    v_receita := v_receita + v_preco;
     v_cmv := v_cmv + v_custo;
   end loop;
 

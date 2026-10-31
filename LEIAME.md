@@ -9,7 +9,7 @@ Sistema web com várias lojas (multiempresa). Cada loja vê só os próprios dad
 - `supabase/migrations/0001_sistema.sql` — tabelas, regras de acesso (RLS) e funções. Rodar uma vez no SQL Editor.
 - `importar_south.sql` (entregue separado, fora do GitHub: tem dados de clientes) — dados da South. Rodar uma vez no SQL Editor, depois de criar a loja pelo site.
 - `dev/` — testes locais (não vão para o ar):
-  - `test_rls.py` — 70 testes de segurança e cálculo direto no PostgreSQL.
+  - `test_rls.py` — 72 testes de segurança e cálculo direto no PostgreSQL.
   - `e2e.py` — teste completo no navegador (cadastro, estoque, venda, convite, vendedor, teste vencido, painel do sistema).
   - `server.js` + `fake-supabase.js` — imitam o Supabase sobre um PostgreSQL local para os testes.
 

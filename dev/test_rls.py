@@ -191,5 +191,11 @@ tk = val(soc, f"select criar_convite('{south}', 'gabriel@south.com', 'vendedor')
 val(gab, f"select aceitar_convite('{tk}')")
 ok("convite não rebaixa o dono", val(gab, f"select papel from membros where empresa_id = '{south}' and user_id = '{gab}'") == "dono")
 
+
+print("Brindes")
+vb = val(gab, "select registrar_venda('%s', '%s')" % (south, json.dumps({"cliente": {"nome": "Brinde Teste"}, "itens": [{"nome": "AirPods", "preco": 1000, "custo": 600}, {"nome": "Capa", "preco": 500, "custo": 40, "brinde": True}]})))
+ok("brinde sai com preço zero", val(gab, f"select string_agg(preco::text || '/' || brinde::text, ',' order by ordem) from venda_itens where venda_id = '{vb}'") == "1000.00/false,0.00/true")
+ok("custo do brinde sai do lucro", val(gab, f"select receita || '|' || f.cmv || '|' || f.lucro from vendas v join vendas_fin f on f.venda_id = v.id where v.id = '{vb}'") == "1000.00|640.00|360.00")
+
 print("\n" + ("TUDO CERTO" if not falhas else f"{falhas} FALHA(S)"))
 sys.exit(1 if falhas else 0)
