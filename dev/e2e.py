@@ -1,0 +1,172 @@
+"""Teste de ponta a ponta: o site de verdade, no navegador, falando com o PostgreSQL local
+pelas mesmas regras de acesso. Cobre cadastro, estoque, venda, convite de vendedor, permissões e bloqueio."""
+import subprocess, time, re, sys, json, os
+from playwright.sync_api import sync_playwright
+
+BASE = "http://localhost:8787"
+PSQL = ["psql", "-h", "/tmp", "-p", "54329", "-U", "postgres", "-d", "teste", "-At", "-q", "-c"]
+falhas = 0; logs = []
+def sql(s): return subprocess.run(PSQL + [s], capture_output=True, text=True).stdout.strip()
+def ok(nome, cond, extra=""):
+    global falhas
+    print(("  OK   " if cond else "  FALHA ") + nome + ("" if cond else "  -> " + str(extra)[:300]))
+    if not cond: falhas += 1
+
+FAKE = open(os.path.join(os.path.dirname(__file__), "fake-supabase.js")).read()
+CONFIG = 'window.APP_CONFIG={NOME_SISTEMA:"Balcão",SUPABASE_URL:"http://localhost:8787",SUPABASE_ANON_KEY:"teste",SUPORTE_WHATSAPP:"5551999999999"};'
+
+def nova_pagina(b, w=1360, h=900, dark=False):
+    c = b.new_context(viewport={"width": w, "height": h}, color_scheme="dark" if dark else "light")
+    c.route("**/supabase.min.js", lambda r: r.fulfill(status=200, content_type="text/javascript", body=FAKE))
+    c.route("**/config.js", lambda r: r.fulfill(status=200, content_type="text/javascript", body=CONFIG))
+    c.route("https://fonts.googleapis.com/**", lambda r: r.fulfill(status=200, content_type="text/css", body=""))
+    p = c.new_page(); p.on("pageerror", lambda e: logs.append("ERRO JS: " + str(e)))
+    p.on("console", lambda m: logs.append("console: " + m.text) if m.type == "error" and "404" not in m.text else None)
+    return c, p
+
+def esperar(p, sel, t=8000): p.wait_for_selector(sel, timeout=t)
+def toast(p):
+    try: return p.inner_text("#toast")
+    except: return ""
+
+import playwright.sync_api as _pw
+_orig_it = _pw.Page.inner_text
+_pw.Page.inner_text = lambda self, *a, **k: _orig_it(self, *a, **k).replace("\xa0", " ")
+_orig_iv = _pw.Page.input_value
+_pw.Page.input_value = lambda self, *a, **k: _orig_iv(self, *a, **k).replace("\xa0", " ")
+with sync_playwright() as pw:
+    b = pw.chromium.launch()
+    print("Cadastro do dono")
+    c, p = nova_pagina(b)
+    p.goto(BASE + "/"); esperar(p, "#au-criar")
+    ok("abre na tela de login", "Entrar" in p.inner_text("#auth"))
+    p.click("#au-criar")
+    p.fill("#au-nome", "Gabriel"); p.fill("#au-email", "gabriel@south.com"); p.fill("#au-senha", "senha12345")
+    p.fill("#au-loja", "South Import's"); p.fill("#au-wa", "51992191293")
+    p.click("#au-ok"); esperar(p, "#au-loja")
+    ok("pede confirmação do nome da loja", p.input_value("#au-loja") == "South Import's")
+    p.click("#au-ok"); esperar(p, "#app:not([hidden])"); p.wait_for_timeout(800)
+    ok("entra no sistema com teste grátis", "Teste grátis" in p.inner_text("#banner"), p.inner_text("#banner"))
+    ok("nome da loja na barra lateral", p.inner_text("#brand-nome") == "South Import's")
+    nav = p.inner_text("#nav")
+    ok("dono vê Financeiro e Minha loja", "Financeiro" in nav and "Minha loja" in nav, nav)
+    ok("dono não vê painel do sistema", "Lojas do sistema" not in nav)
+    ok("dock visível e barra lateral escondida", p.is_visible("#mobnav") and not p.is_visible(".side"))
+    p.screenshot(path="dev/shots/01-painel-vazio.png", full_page=True)
+
+    print("SKU, entrada e custo médio")
+    p.click(".mobnav [data-go=skus]"); p.wait_for_timeout(300)
+    p.click("#k-novo"); p.fill("#k-nome", "iPhone 14 128 GB"); p.click("#k-ok"); p.wait_for_timeout(800)
+    ok("SKU 1 criado", "SKU 1" in p.inner_text("#k-lista"), p.inner_text("#k-lista"))
+    sid = sql("select id from skus limit 1")
+    for custo in ["100000", "110000"]:
+        p.click(f'[data-kent="{sid}"]'); esperar(p, "#m-custo"); p.type("#m-custo", custo); p.click("#m-ok"); p.wait_for_timeout(900)
+    p.click(f'[data-kent="{sid}"]'); esperar(p, "#m-custo"); p.type("#m-custo", "120000"); p.fill("#m-qtd", "2"); p.dispatch_event("#m-qtd", "input")
+    p.wait_for_timeout(100); prev = p.inner_text("#m-media")
+    ok("prévia da média ao lançar 2 a 1.200", "R$ 1.125,00" in prev, prev)
+    p.click("#m-ok"); p.wait_for_timeout(1000)
+    lista = p.inner_text("#k-lista")
+    ok("4 em estoque, custo médio 1.125", "\t4\t" in lista and "R$ 1.125,00" in lista, lista)
+    p.screenshot(path="dev/shots/02-skus.png", full_page=True)
+
+    print("Venda com troca no crédito")
+    p.click(".mobnav [data-go=venda]"); p.wait_for_timeout(300)
+    p.fill("#v-cli", "Mariana Souza"); p.dispatch_event("#v-cli", "input"); p.fill("#v-fone", "51999884410"); p.dispatch_event("#v-fone", "input")
+    p.click("#v-mais summary"); p.type("#v-cpf", "52998224725"); p.fill("#v-email", "mari@x.com"); p.dispatch_event("#v-email", "input")
+    p.fill("#v-q", "14"); p.dispatch_event("#v-q", "input"); p.wait_for_timeout(200)
+    p.click("#v-res [data-sk]"); p.wait_for_timeout(100); p.type('[data-preco="0"]', "160000")
+    p.check("#v-tem-troca"); p.fill("#v-t-sku", "iPhone 11 64 GB"); p.dispatch_event("#v-t-sku", "input")
+    p.fill("#v-t-id", "490154203237518"); p.dispatch_event("#v-t-id", "input"); p.click("#v-t-val"); p.type("#v-t-val", "50000")
+    p.click("[data-forma=credito]"); p.select_option("#v-parc", "12"); p.wait_for_timeout(200)
+    resumo = p.inner_text("#v-sum")
+    ok("resumo mostra lucro 475 (1.600 − 1.125)", "R$ 475,00" in resumo, resumo)
+    p.click("#v-ok"); p.wait_for_timeout(1500)
+    ok("venda registrada e recibo pronto", "Venda registrada" in p.inner_text("#view"), p.inner_text("#view")[:200])
+    ok("recibo sai com o nome da loja", "South Import's" in p.input_value("#f-txt"))
+    fin = sql("select cmv||'|'||lucro from vendas_fin")
+    ok("banco gravou custo e lucro certos", fin == "1125.00|475.00", fin)
+    ok("troca entrou no estoque", sql("select count(*) from unidades where origem='troca'") == "1")
+
+    print("Financeiro e vendas do mês")
+    p.click(".mobnav [data-go=financeiro]"); p.wait_for_timeout(500)
+    p.type("#f-valor", "80000"); p.select_option("#f-cat", "Gestor de tráfego"); p.click("#f-form button[type=submit]"); p.wait_for_timeout(900)
+    dre = p.inner_text("#f-dre")
+    ok("resultado do mês = 475 − 800 = −325", "-R$ 325,00" in dre, dre)
+    p.click(".mobnav [data-go=vendas]"); p.wait_for_timeout(500)
+    ok("vendas do mês lista a venda", "Mariana Souza" in p.inner_text("#vm-lista"))
+    p.screenshot(path="dev/shots/03-vendas.png", full_page=True)
+
+    print("Marca da loja e convite")
+    p.click(".mobnav [data-go=loja]"); p.wait_for_timeout(600)
+    p.fill("#lj-cor", "#2a6df4"); p.set_input_files("#lj-logo", "dev/logo_south.png"); p.wait_for_timeout(400)
+    p.click("#lj-salvar"); p.wait_for_timeout(900)
+    ok("logo e cor salvos", sql("select cor || '|' || (length(logo) > 100)::text from empresas") == "#2a6df4|true")
+    ok("logo aparece na barra lateral", p.locator("#brand-mark img").count() == 1)
+    p.fill("#cv-email", "vendedor@south.com"); p.select_option("#cv-papel", "vendedor"); p.click("#cv-ok"); p.wait_for_timeout(1000)
+    link = p.get_attribute("[data-cp]", "data-cp")
+    ok("convite gera link", link and "#convite-" in link, link)
+    p.screenshot(path="dev/shots/04-minha-loja.png", full_page=True)
+    p.click("#mob-conta"); p.wait_for_timeout(200); p.click("#mc-sair"); p.wait_for_timeout(800)
+    ok("saiu", "Entrar" in p.inner_text("#auth"))
+    c.close()
+
+    print("Vendedor aceita o convite")
+    c, p = nova_pagina(b)
+    p.goto(link.replace("http://localhost:8787", BASE)); esperar(p, "#au-criar")
+    ok("tela do convite mostra a loja e o papel", "South Import's" in p.inner_text("#auth") and "Vendedor" in p.inner_text("#auth"))
+    p.click("#au-criar"); p.fill("#au-nome", "Lucas"); p.fill("#au-senha", "senha12345")
+    ok("e-mail do convite já preenchido", p.input_value("#au-email") == "vendedor@south.com")
+    p.click("#au-ok"); esperar(p, "#app:not([hidden])"); p.wait_for_timeout(1000)
+    nav = p.inner_text("#nav")
+    ok("vendedor não vê Painel, SKUs, Financeiro nem Vendas do mês", all(x not in nav for x in ["Painel", "SKUs", "Financeiro", "Vendas do mês", "Minha loja"]), nav)
+    ok("vendedor cai direto em Nova venda", "Nova venda" in p.inner_text("#view h1"))
+    p.click(".mobnav [data-go=estoque]"); p.wait_for_timeout(400)
+    est = p.inner_text("#view")
+    ok("estoque do vendedor sem custos", "Custo" not in est and "R$ 1.1" not in est, est[:300])
+    p.click(".mobnav [data-go=venda]"); p.wait_for_timeout(300)
+    p.fill("#v-cli", "Kevin"); p.dispatch_event("#v-cli", "input")
+    p.fill("#v-q", "14"); p.dispatch_event("#v-q", "input"); p.wait_for_timeout(200)
+    ok("busca do vendedor sem custo médio", "custo" not in p.inner_text("#v-res"), p.inner_text("#v-res"))
+    p.click("#v-res [data-sk]"); p.type('[data-preco="0"]', "170000"); p.wait_for_timeout(200)
+    ok("resumo do vendedor sem lucro", "Lucro" not in p.inner_text("#v-sum"))
+    p.click("#v-ok"); p.wait_for_timeout(1500)
+    ok("vendedor registra venda", "Venda registrada" in p.inner_text("#view"))
+    ok("custo calculado no servidor (1.125)", sql("select f.cmv from vendas_fin f join vendas v on v.id=f.venda_id where v.cliente->>'nome'='Kevin'") == "1125.00")
+    leak = p.evaluate("JSON.stringify([S.un.map(u=>u.custo), S.vendas.map(v=>[v.lucro, v.cmv]), S.lanc.length])")
+    ok("nenhum custo chegou ao navegador do vendedor", leak == '[[null,null,null,null,null],[[0,0],[0,0]],0]', leak)
+    c.close()
+
+    print("Painel do sistema e teste vencido")
+    sql("insert into superadmins select id from auth.users where email='gabriel@south.com'")
+    sql("update empresas set teste_ate = now() - interval '1 day'")
+    c, p = nova_pagina(b)
+    p.goto(BASE + "/"); esperar(p, "#au-email"); p.fill("#au-email", "gabriel@south.com"); p.fill("#au-senha", "senha12345"); p.click("#au-ok")
+    esperar(p, "#app:not([hidden])"); p.wait_for_timeout(1000)
+    ok("teste vencido mostra aviso", "teste grátis acabou" in p.inner_text("#banner"), p.inner_text("#banner"))
+    p.click(".mobnav [data-go=financeiro]"); p.wait_for_timeout(400); p.type("#f-valor", "1000"); p.click("#f-form button[type=submit]"); p.wait_for_timeout(500)
+    ok("não deixa gravar com teste vencido", "teste acabou" in toast(p), toast(p))
+    ok("admin vê Lojas do sistema", p.evaluate("S.superadmin") is True)
+    p.click("#mob-conta"); p.wait_for_timeout(200); p.click("#mc-admin"); p.wait_for_timeout(800)
+    ok("lista de lojas", "South Import's" in p.inner_text("#ad-lista"), p.inner_text("#ad-lista"))
+    p.click('[data-ad^="ativa|30"]'); p.wait_for_timeout(1200)
+    ok("ativar 30 dias libera a loja", sql("select status from empresas") == "ativa" and "acabou" not in p.inner_text("#banner"), p.inner_text("#banner"))
+    p.screenshot(path="dev/shots/05-admin.png", full_page=True)
+    c.close()
+
+    print("Celular e tema escuro")
+    c, p = nova_pagina(b, 390, 844, dark=True)
+    p.goto(BASE + "/"); esperar(p, "#au-email")
+    p.screenshot(path="dev/shots/06-login-celular.png")
+    p.fill("#au-email", "gabriel@south.com"); p.fill("#au-senha", "senha12345"); p.click("#au-ok"); esperar(p, "#app:not([hidden])"); p.wait_for_timeout(1000)
+    ok("sem rolagem lateral no celular", p.evaluate("document.documentElement.scrollWidth") <= 390)
+    p.screenshot(path="dev/shots/07-painel-celular.png", full_page=True)
+    p.click("#mob-conta"); p.wait_for_timeout(200)
+    ok("menu Conta no celular tem Sair", "Sair" in p.inner_text("#modal"))
+    c.close()
+    b.close()
+
+erros = [l for l in logs if "ERRO JS" in l]
+ok("sem erros de JavaScript", not erros, "\n".join(erros[:5]))
+print("\n".join(l for l in logs if l not in erros)[:1500])
+print("\n" + ("TUDO CERTO" if not falhas else f"{falhas} FALHA(S)"))
+sys.exit(1 if falhas else 0)

@@ -1,0 +1,195 @@
+"""Testes das regras de acesso e das funções do banco, contra um PostgreSQL local.
+Cada chamada roda como um usuário logado (role authenticated + jwt sub), igual ao Supabase."""
+import subprocess, json, sys, uuid
+
+DB = ["psql", "-h", "/tmp", "-p", "54329", "-U", "postgres", "-d", "teste", "-At", "-q", "-v", "ON_ERROR_STOP=1"]
+falhas = 0
+
+def raw(sql):
+    r = subprocess.run(DB + ["-c", sql], capture_output=True, text=True)
+    return r.returncode, r.stdout.strip(), r.stderr.strip()
+
+def como(uid, sql):
+    pre = "set role authenticated; select set_config('request.jwt.claims', '%s', false) \\g /dev/null\n" % json.dumps({"sub": uid, "role": "authenticated"})
+    r = subprocess.run(DB, input=pre + sql, capture_output=True, text=True)
+    return r.returncode, r.stdout.strip(), r.stderr.strip()
+
+def ok(nome, cond, extra=""):
+    global falhas
+    print(("  OK   " if cond else "  FALHA ") + nome + ("" if cond else "  -> " + str(extra)))
+    if not cond: falhas += 1
+
+def val(uid, sql):
+    c, o, e = como(uid, sql)
+    if c: raise RuntimeError(e)
+    return o
+
+def usuario(email):
+    c, o, e = raw(f"insert into auth.users(email) values ('{email}') returning id")
+    return o.splitlines()[0]
+
+raw("truncate public.empresas, public.superadmins cascade; delete from auth.users;")
+gab = usuario("gabriel@south.com"); soc = usuario("socio@south.com"); ven = usuario("vendedor@south.com")
+outra = usuario("dono@outraloja.com"); estranho = usuario("curioso@x.com"); adm = usuario("admin@sistema.com")
+raw(f"insert into superadmins values ('{adm}')")
+
+print("Cadastro e convites")
+south = val(gab, "select criar_empresa('South Import''s', '51992191293', 'Gabriel')")
+ok("dono cria a loja", len(south) == 36)
+c, o, e = como(gab, "select criar_empresa('Outra', '', '')")
+ok("dono não cria segunda loja", c != 0 and "já tem" in e, e)
+tok_s = val(gab, f"select criar_convite('{south}', 'socio@south.com', 'socio')")
+tok_v = val(gab, f"select criar_convite('{south}', 'vendedor@south.com', 'vendedor')")
+c, o, e = como(estranho, f"select aceitar_convite('{tok_s}')")
+ok("convite não serve para outro e-mail", c != 0 and "socio@south.com" in e, e)
+val(soc, f"select aceitar_convite('{tok_s}', 'Sócio')"); val(ven, f"select aceitar_convite('{tok_v}', 'Vendedor')")
+c, o, e = como(ven, f"select aceitar_convite('{tok_v}')")
+ok("convite não pode ser usado duas vezes", c != 0, e)
+c, o, e = como(ven, f"select criar_convite('{south}', 'x@x.com', 'vendedor')")
+ok("vendedor não convida ninguém", c != 0, e)
+c, o, e = como(soc, f"select criar_convite('{south}', 'y@x.com', 'socio')")
+ok("sócio não convida outro sócio", c != 0, e)
+ok("papéis certos", val(gab, f"select string_agg(papel, ',' order by papel) from membros where empresa_id = '{south}'") == "dono,socio,vendedor")
+loja2 = val(outra, "select criar_empresa('Loja do Vizinho', '', '')")
+
+print("Estoque e custo médio")
+sku14 = val(gab, f"insert into skus(empresa_id, nome, cat) values ('{south}', 'iPhone 14 128 GB', 'iPhone') returning id")
+ok("SKU ganha código 1 sozinho", val(gab, f"select cod from skus where id = '{sku14}'") == "1")
+sku2 = val(gab, f"insert into skus(empresa_id, nome, cat) values ('{south}', '  iPhone   15  ', 'iPhone') returning id")
+ok("SKU 2 e nome limpo", val(gab, f"select cod || '|' || nome from skus where id = '{sku2}'") == "2|iPhone 15")
+c, o, e = como(gab, f"insert into skus(empresa_id, nome) values ('{south}', 'iphone 14 128 gb')")
+ok("não repete nome de SKU", c != 0, e)
+c, o, e = como(ven, f"insert into skus(empresa_id, nome) values ('{south}', 'Vendedor criou')")
+ok("vendedor não cria SKU", c != 0, e)
+val(gab, f"select entrada_estoque('{south}', '{sku14}', 1, 1000)")
+val(gab, f"select entrada_estoque('{south}', '{sku14}', 1, 1100, 'imei', '35 6938 0356 43809')")
+val(soc, f"select entrada_estoque('{south}', '{sku14}', 2, 1200)")
+ok("4 unidades no estoque", val(gab, f"select count(*) from unidades where sku_id = '{sku14}' and status = 'estoque'") == "4")
+ok("IMEI salvo só com números", val(gab, f"select count(*) from unidades where ident = '356938035643809'") == "1")
+c, o, e = como(gab, f"select entrada_estoque('{south}', '{sku14}', 1, 999, 'imei', '356938035643809')")
+ok("IMEI repetido é recusado", c != 0 and "já está cadastrado" in e, e)
+c, o, e = como(ven, f"select entrada_estoque('{south}', '{sku14}', 1, 999)")
+ok("vendedor não dá entrada no estoque", c != 0, e)
+ok("custo médio 1.125", raw(f"select custo_medio('{sku14}')")[1] == "1125.00")
+ok("vendedor vê as unidades", val(ven, f"select count(*) from unidades where empresa_id = '{south}'") == "4")
+ok("vendedor NÃO vê custos", val(ven, "select count(*) from unidades_custo") == "0")
+ok("sócio vê custos", val(soc, "select count(*) from unidades_custo") == "4")
+
+print("Isolamento entre lojas")
+ok("outra loja não vê SKUs da South", val(outra, "select count(*) from skus") == "0")
+ok("outra loja não vê estoque da South", val(outra, "select count(*) from unidades") == "0")
+ok("estranho não vê nada", val(estranho, "select count(*) from empresas") == "0")
+c, o, e = como(outra, f"insert into skus(empresa_id, nome) values ('{south}', 'invasão')")
+ok("outra loja não escreve na South", c != 0, e)
+c, o, e = como(outra, f"select entrada_estoque('{south}', '{sku14}', 1, 1)")
+ok("outra loja não usa funções da South", c != 0, e)
+c, o, e = como(outra, f"select registrar_venda('{south}', '{{\"itens\":[{{\"nome\":\"x\",\"preco\":1}}]}}')")
+ok("outra loja não registra venda na South", c != 0, e)
+c, o, e = como(gab, f"update empresas set status = 'ativa', teste_ate = now() + interval '10 years' where id = '{south}'")
+ok("dono não se libera sozinho (status)", c != 0, e)
+val(gab, f"update empresas set nome = 'South Imports', cor = '#112233' where id = '{south}'")
+ok("dono edita nome e cor", val(gab, f"select nome || cor from empresas where id = '{south}'") == "South Imports#112233")
+c, o, e = como(soc, f"update empresas set nome = 'Hack' where id = '{south}' returning nome")
+ok("sócio não edita dados da loja", o == "", o)
+c, o, e = como(gab, "select * from superadmins")
+ok("ninguém lê a lista de admins", c != 0, e)
+
+print("Venda feita pelo vendedor")
+un_ids = val(gab, f"select string_agg(id::text, ',' order by entrada, criado_em) from unidades where sku_id = '{sku14}' and status = 'estoque'").split(",")
+venda = val(ven, "select registrar_venda('%s', '%s')" % (south, json.dumps({
+  "cliente": {"nome": "Mariana Souza", "fone": "51999884410", "cpf": "52998224725", "email": "mari@x.com", "endereco": {"cidade": "Porto Alegre", "uf": "RS"}},
+  "vendedor": "Vendedor", "origem": "Indicação", "forma": "credito", "parcelas": 12, "modo": "repassa",
+  "itens": [{"unidade_id": un_ids[0], "preco": 1600}, {"nome": "Capinha MagSafe", "preco": 150, "custo": 1}],
+  "troca": {"nome": "iPhone 11 64 GB", "tipo": "imei", "ident": "490154203237518", "valor": 500, "bateria": "80"}
+}).replace("'", "''")))
+ok("vendedor registra a venda", len(venda) == 36, venda)
+ok("vendedor não vê o lucro", val(ven, "select count(*) from vendas_fin") == "0")
+ok("vendedor não vê o custo dos itens", val(ven, "select count(*) from venda_itens_custo") == "0")
+fin = val(gab, f"select cmv || '|' || taxa_valor || '|' || lucro from vendas_fin where venda_id = '{venda}'")
+ok("custo = média 1.125 + capinha 0 (vendedor não define custo)", fin == "1125.00|0.00|625.00", fin)
+v = val(gab, f"select a_pagar || '|' || cliente_paga || '|' || recebido || '|' || taxa_pct || '|' || receita from vendas where id = '{venda}'")
+ok("taxa 12x vem do servidor: 1250 / (1 − 10,99%) = 1.404,37", v == "1250.00|1404.37|1250.00|10.9924|1750.00", v)
+ok("média dos que ficaram continua 1.125", raw(f"select custo_medio('{sku14}')")[1] == "1125.00")
+ok("troca entrou no estoque como seminovo com custo 500", val(gab, "select u.cond || '|' || c.custo || '|' || u.origem from unidades u join unidades_custo c on c.unidade_id = u.id where u.ident = '490154203237518'") == "seminovo|500.00|troca")
+ok("cliente salvo com CPF e endereço", val(gab, f"select cpf || '|' || (endereco->>'cidade') from clientes where empresa_id = '{south}'") == "52998224725|Porto Alegre")
+c, o, e = como(ven, "select registrar_venda('%s', '%s')" % (south, json.dumps({"cliente": {"nome": "Outro"}, "itens": [{"unidade_id": un_ids[0], "preco": 1}]})))
+ok("não vende o mesmo aparelho duas vezes", c != 0 and "já foi vendido" in e, e)
+c, o, e = como(ven, f"select estornar_venda('{venda}')")
+ok("vendedor não estorna", c != 0, e)
+
+print("Venda feita pelo dono com custo manual")
+v2 = val(gab, "select registrar_venda('%s', '%s')" % (south, json.dumps({"cliente": {"nome": "mariana souza", "fone": ""}, "forma": "credito", "parcelas": 10, "modo": "absorve",
+  "itens": [{"nome": "AirPods Pro 3", "preco": 1800, "custo": 1400}]})))
+ok("mesmo cliente reaproveitado (sem duplicar)", val(gab, f"select count(*) from clientes where empresa_id = '{south}'") == "1")
+fin2 = val(gab, f"select cmv || '|' || taxa_valor || '|' || lucro from vendas_fin where venda_id = '{v2}'")
+ok("South absorve 10x: taxa sai do lucro", fin2 == "1400.00|172.66|227.34", fin2)
+
+print("Estorno")
+val(gab, f"select estornar_venda('{venda}')")
+ok("aparelho volta ao estoque", val(gab, f"select status from unidades where id = '{un_ids[0]}'") == "estoque")
+ok("troca sai do estoque", val(gab, "select count(*) from unidades where ident = '490154203237518'") == "0")
+ok("média volta a 1.125 com 4 unidades", raw(f"select count(*) || '|' || custo_medio('{sku14}') from unidades where sku_id = '{sku14}' and status = 'estoque'")[1] == "4|1125.00")
+
+print("Financeiro")
+ok("dono lança despesa", val(gab, f"insert into lancamentos(empresa_id, tipo, valor, cat) values ('{south}', 'despesa', 800, 'Gestor de tráfego') returning valor") == "800.00")
+ok("vendedor não vê o financeiro", val(ven, "select count(*) from lancamentos") == "0")
+c, o, e = como(ven, f"insert into lancamentos(empresa_id, tipo, valor) values ('{south}', 'despesa', 1)")
+ok("vendedor não lança despesa", c != 0, e)
+
+print("Juntar SKUs e vendas sem SKU")
+v3 = val(gab, "select registrar_venda('%s', '%s')" % (south, json.dumps({"cliente": {"nome": "Kevin"}, "forma": "pix", "itens": [{"nome": "iPhone 14 128gb", "preco": 3000, "custo": 2000}]})))
+n = val(gab, f"select ligar_itens_sem_sku('{south}', 'iPhone 14 128gb', '{sku14}')")
+ok("liga venda sem SKU ao SKU", n == "1", n)
+val(gab, f"select entrada_estoque('{south}', '{sku2}', 1, 3000)")
+val(gab, f"select juntar_skus('{sku2}', '{sku14}')")
+ok("SKU 2 sumiu e o estoque passou para o SKU 1", val(gab, f"select count(*) from skus where id = '{sku2}'") + "|" + val(gab, f"select count(*) from unidades where sku_id = '{sku14}' and status='estoque'") == "0|5")
+
+print("Teste grátis e painel do dono do sistema")
+raw(f"update empresas set teste_ate = now() - interval '1 day' where id = '{south}'")
+c, o, e = como(gab, f"select entrada_estoque('{south}', '{sku14}', 1, 1)")
+ok("teste vencido: não grava", c != 0, e)
+ok("teste vencido: ainda consegue ler", int(val(gab, f"select count(*) from skus where empresa_id = '{south}'")) >= 1)
+c, o, e = como(ven, "select registrar_venda('%s', '%s')" % (south, json.dumps({"itens": [{"nome": "x", "preco": 1}]})))
+ok("teste vencido: vendedor não vende", c != 0, e)
+c, o, e = como(gab, "select * from admin_empresas()")
+ok("dono da loja não acessa o painel do sistema", c != 0, e)
+ok("admin vê as 2 lojas", val(adm, "select count(*) from admin_empresas()") == "2")
+val(adm, f"select admin_definir('{south}', 'ativa', 30, 'Pix recebido')")
+ok("admin libera por 30 dias e a loja volta a gravar", como(gab, f"select entrada_estoque('{south}', '{sku14}', 1, 1)")[0] == 0)
+raw(f"update empresas set pago_ate = now() - interval '1 hour' where id = '{south}'")
+ok("assinatura vencida bloqueia de novo", como(gab, f"select entrada_estoque('{south}', '{sku14}', 1, 1)")[0] != 0)
+ok("minhas_empresas mostra papel", val(ven, "select papel from minhas_empresas()") == "vendedor")
+ok("admin sabe que é admin", val(adm, "select coalesce(bool_or(superadmin), e_superadmin())::text from minhas_empresas()") in ("true",))
+
+
+print("Correções da revisão de segurança")
+raw(f"update empresas set status='ativa', pago_ate = now() + interval '30 days' where id = '{south}'")
+c, o, e = como(estranho, f"select remover_membro('{south}', '{gab}')")
+ok("estranho não remove membros", c != 0, e)
+ok("dono continua na loja", val(gab, f"select count(*) from membros where empresa_id = '{south}' and papel = 'dono'") == "1")
+c, o, e = como(ven, f"select custo_medio('{sku14}')")
+ok("vendedor não consulta custo médio", c != 0, e)
+c, o, e = como(outra, f"select custo_medio('{sku14}')")
+ok("outra loja não consulta custo médio", c != 0, e)
+sku_out = val(outra, f"insert into skus(empresa_id, nome) values ('{loja2}', 'Produto vizinho') returning id")
+raw(f"update empresas set status='ativa', pago_ate = now() + interval '30 days' where id = '{loja2}'")
+val(outra, f"select entrada_estoque('{loja2}', '{sku_out}', 1, 10)")
+c, o, e = como(outra, f"update unidades set sku_id = '{sku14}' where empresa_id = '{loja2}'")
+ok("não aponta aparelho para SKU de outra loja", c != 0, e)
+c, o, e = como(gab, f"update unidades set status = 'vendido', venda_id = null where sku_id = '{sku14}'")
+ok("dono não muda status do aparelho direto", c != 0, e)
+c, o, e = como(gab, f"update skus set empresa_id = '{loja2}' where id = '{sku14}'")
+ok("SKU não muda de loja", c != 0, e)
+c, o, e = como(ven, "select obs_admin from empresas")
+ok("observação do admin não é legível", c != 0, e)
+ok("dados normais da loja continuam legíveis", val(ven, "select nome from empresas") == "South Imports")
+c, o, e = como(ven, "select registrar_venda('%s', '%s')" % (south, json.dumps({"itens": [{"nome": "x", "preco": -5000}]})))
+ok("preço negativo recusado", c != 0 and "inválido" in e, e)
+c, o, e = como(ven, "select registrar_venda('%s', '%s')" % (south, json.dumps({"cliente": {"nome": "Teste"}, "itens": [{"nome": "x", "preco": 100}], "troca": {"nome": "iPhone 8", "valor": 7777}})))
+ok("troca maior que a venda recusada", c != 0 and "troca" in e, e)
+tk = val(soc, f"select criar_convite('{south}', 'gabriel@south.com', 'vendedor')")
+val(gab, f"select aceitar_convite('{tk}')")
+ok("convite não rebaixa o dono", val(gab, f"select papel from membros where empresa_id = '{south}' and user_id = '{gab}'") == "dono")
+
+print("\n" + ("TUDO CERTO" if not falhas else f"{falhas} FALHA(S)"))
+sys.exit(1 if falhas else 0)

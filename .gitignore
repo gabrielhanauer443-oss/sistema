@@ -1,0 +1,4 @@
+dev/pgdata/
+dev/shots/
+*.log
+supabase/importar_*.sql
