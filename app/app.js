@@ -444,12 +444,13 @@ V.estoque = {
       $("e-tab").innerHTML = `<table><thead><tr><th>Produto</th><th class="r">Em estoque</th>${S.verCustos ? '<th class="r">Custo médio em estoque</th><th class="r">Faixa de custo</th><th class="r">Custo médio histórico</th>' : ""}<th class="r">Mais antigo</th></tr></thead><tbody>` +
         ids.map(id => {
           const st = statsSku(id), aberto = EST.abertos.has(id) || !!q;
-          return `<tr class="click" data-sku="${id}"><td><b>${aberto?"▾":"▸"} ${esc(skuNome(id))}</b><span class="sub">${esc([skuCod(id), (S.skus[id]||{}).cat].filter(Boolean).join(" · "))}</span></td><td class="r"><b>${st.qtd}</b></td>${S.verCustos ? `<td class="r"><b>${R(st.medioEst)}</b></td><td class="r nw">${st.min===st.max ? "—" : R(st.min)+" a "+R(st.max)}</td><td class="r">${R(st.medioHist)}<span class="sub">${st.nHist} ${st.nHist===1?"aparelho":"aparelhos"}</span></td>` : ""}<td class="r">${st.maisAntigo>=PARADO ? `<span class="tag t-warn">${st.maisAntigo} dias</span>` : st.maisAntigo+" dias"}</td></tr>` +
+          return `<tr class="click" data-sku="${id}"><td><b>${aberto?"▾":"▸"} ${esc(skuNome(id))}</b><span class="sub">${esc([skuCod(id), (S.skus[id]||{}).cat].filter(Boolean).join(" · "))}${S.verCustos === false ? "" : ` · <span class="link" role="button" tabindex="0" data-esku="${id}" style="font-size:12px">editar SKU</span>`}</span></td><td class="r"><b>${st.qtd}</b></td>${S.verCustos ? `<td class="r"><b>${R(st.medioEst)}</b></td><td class="r nw">${st.min===st.max ? "—" : R(st.min)+" a "+R(st.max)}</td><td class="r">${R(st.medioHist)}<span class="sub">${st.nHist} ${st.nHist===1?"aparelho":"aparelhos"}</span></td>` : ""}<td class="r">${st.maisAntigo>=PARADO ? `<span class="tag t-warn">${st.maisAntigo} dias</span>` : st.maisAntigo+" dias"}</td></tr>` +
             (aberto ? grupos[id].sort((a,b) => dias(b.entrada)-dias(a.entrada)).map(u => linhaUn(u, false)).join("") : "");
         }).join("") + `</tbody></table>`;
       $("e-tab").querySelectorAll("[data-sku]").forEach(tr => tr.onclick = () => { const id = tr.dataset.sku; EST.abertos.has(id) ? EST.abertos.delete(id) : EST.abertos.add(id); this.update(); });
     }
     $("e-tab").querySelectorAll("[data-edit]").forEach(b => b.onclick = e => { e.stopPropagation(); modalEditarUn(b.dataset.edit); });
+    $("e-tab").querySelectorAll("[data-esku]").forEach(b => b.onclick = e => { e.stopPropagation(); modalSku(b.dataset.esku); });
   }
 };
 function linhaUn(u, comNome){
@@ -615,7 +616,7 @@ V.skus = {
     const l = Object.values(S.skus).filter(s => !q || skuBusca(s.id).includes(q))
       .sort((a,b) => (Number(a.cod)||1e9) - (Number(b.cod)||1e9) || norm(a.nome).localeCompare(norm(b.nome)));
     $("k-lista").innerHTML = l.length ? l.map(s => { const st = statsSku(s.id), sv = statsVendaSku(s.id);
-      return `<tr><td class="nw"><span class="tag t-lac">${s.cod ? "SKU "+s.cod : "sem código"}</span></td><td><b>${esc(s.nome)}</b></td><td>${esc(s.cat||"Outros")}</td>
+      return `<tr><td class="nw"><span class="tag t-lac">${s.cod ? "SKU "+s.cod : "sem código"}</span></td><td><button class="link" type="button" data-ked="${s.id}" style="font-size:14px;color:var(--fg);text-align:left" title="Editar SKU">${esc(s.nome)} ✎</button></td><td>${esc(s.cat||"Outros")}</td>
         <td class="r">${st.qtd || '<span class="sub" style="display:inline">0</span>'}</td><td class="r nw">${st.medioEst ? R(st.medioEst) : st.medioHist ? `<span class="sub" style="display:inline">${R(st.medioHist)}</span>` : "—"}</td>
         <td class="r">${sv.n}</td><td class="r nw">${sv.n ? R(sv.medio) : "—"}</td><td class="r nw"><button class="btn btn-gold btn-sm" type="button" data-kent="${s.id}">+ Entrada</button> <button class="btn btn-ghost btn-sm" type="button" data-ked="${s.id}">Editar</button></td></tr>` +
         (st.qtd ? `<tr><td></td><td colspan="7" style="padding-top:0;border-top:0"><div class="prices" style="align-items:center"><small class="sub" style="display:inline;font-size:12px">Compras em estoque:</small>${st.est.slice().sort((x,y) => (x.entrada||"").localeCompare(y.entrada||"")).map(u => `<button type="button" class="chip" data-kun="${u.id}" title="Editar esta unidade">${R(u.custo)} <small class="sub" style="display:inline;font-size:11.5px;font-weight:500">${dataBR(u.entrada).slice(0,5)}${u.ident ? " · …"+esc(String(u.ident).slice(-4)) : ""}</small></button>`).join("")}</div></td></tr>` : ""); }).join("")
@@ -1052,6 +1053,64 @@ function montarOrcamento(o){
 }
 
 
+
+/* ---------- EDITAR VENDA ---------- */
+const EV = {};
+function modalEditarVenda(id){
+  const v = S.vendas.find(x => x.id === id); if(!v) return;
+  Object.assign(EV, {forma: v.forma, parc: v.parcelas || 12, modo: v.modo || "repassa", precos: (v.itens||[]).map(i => Number(i.preco)||0)});
+  const formas = [["pix","Pix"],["dinheiro","Dinheiro"],["debito","Débito"],["credito","Crédito"]].concat(v.forma === "nao_informado" ? [["nao_informado","Não informado"]] : []);
+  const vendedores = [...new Set(S.vendas.map(x => x.vendedor).filter(Boolean))];
+  abrirModal("Editar venda", `<form class="form" id="ev-form" autocomplete="off">
+      <div class="row"><div class="f"><label for="ev-cli">Cliente</label><input class="in" id="ev-cli" list="ev-clis" value="${esc(v.cliente && v.cliente.id ? v.cliente.nome : "")}" placeholder="Nome do cliente"><datalist id="ev-clis">${S.cli.map(c => `<option value="${esc(c.nome)}">`).join("")}</datalist></div>
+        <div class="f"><label for="ev-fone">WhatsApp</label><input class="in" id="ev-fone" inputmode="tel" value="${esc(fone((v.cliente && v.cliente.fone) || ""))}"></div></div>
+      <div class="row"><div class="f"><label for="ev-vend">Vendedor</label><input class="in" id="ev-vend" list="ev-vends" value="${esc(v.vendedor||"")}" placeholder="Quem fechou a venda"><datalist id="ev-vends">${vendedores.map(n => `<option value="${esc(n)}">`).join("")}</datalist></div>
+        <div class="f"><label for="ev-orig">Como o cliente chegou</label><select class="in" id="ev-orig"><option value="">Não informado</option>${ORIGENS.map(o => `<option ${v.origem===o?"selected":""}>${o}</option>`).join("")}</select></div></div>
+      <div class="row"><div class="f"><label for="ev-data">Data da venda</label><input class="in" id="ev-data" type="date" value="${v.semData ? "" : esc(v.data)}">${v.semData ? `<span class="hint">Esta venda está sem data. Preencha para corrigir.</span>` : ""}</div>
+        <div class="f"><label for="ev-obs">Observação</label><input class="in" id="ev-obs" value="${esc(v.obs||"")}"></div></div>
+      <div class="f"><span class="lbl">Valores dos itens</span><div class="form" style="gap:6px">${(v.itens||[]).map((it, i) => `<div class="item" style="grid-template-columns:minmax(0,1fr) 150px"><div><b>${esc(itNome(it))}</b><span class="sub">${it.brinde ? "Brinde" : esc(identFmt(it) || (it.u ? "Do estoque" : "Fora do estoque"))}${S.verCustos === false ? "" : " · custo " + R(it.custo)}</span></div>${it.brinde ? `<span class="sub" style="display:block;text-align:right">sem cobrar</span>` : `<input class="in" data-evp="${i}" inputmode="numeric" value="${R(it.preco)}" aria-label="Preço de ${esc(itNome(it))}">`}</div>`).join("")}</div>
+        ${v.troca ? `<span class="hint">Troca: ${esc(v.troca.nome)} por ${R(v.troca.valor)}. Para mudar itens ou a troca, estorne e lance de novo.</span>` : `<span class="hint">Para trocar ou tirar itens, estorne a venda e lance de novo.</span>`}</div>
+      <div class="f"><span class="lbl">Pagamento</span><div class="seg" role="group" aria-label="Forma de pagamento">${formas.map(([k,n]) => `<button type="button" data-evf="${k}" aria-pressed="${EV.forma===k}">${n}</button>`).join("")}</div></div>
+      <div class="row" id="ev-cred" ${EV.forma==="credito"?"":"hidden"}><div class="f"><label for="ev-parc">Parcelas</label><select class="in" id="ev-parc">${Array.from({length:18},(_,i) => `<option value="${i+1}" ${EV.parc===i+1?"selected":""}>${i+1}x · taxa ${P(S.taxas.cred[i])}</option>`).join("")}</select></div>
+        <div class="f"><span class="lbl">Quem paga a taxa</span><div class="seg" role="group" aria-label="Quem paga a taxa"><button type="button" data-evm="repassa" aria-pressed="${EV.modo==="repassa"}">Cliente</button><button type="button" data-evm="absorve" aria-pressed="${EV.modo==="absorve"}">A loja</button></div></div></div>
+      <div id="ev-sum" class="card-b" style="background:var(--sunk);border-radius:12px;padding:12px 14px"></div>
+      <div id="ev-msg"></div></form>`,
+    `<button class="btn btn-ghost" type="button" data-close>Cancelar</button><button class="btn btn-gold" type="button" id="ev-ok">Salvar alterações</button>`,
+    () => {
+      const mudouPag = () => EV.forma !== v.forma || (EV.forma === "credito" && (EV.parc !== v.parcelas || EV.modo !== (v.modo || "repassa")));
+      const calc = () => {
+        const itens = (v.itens||[]).map((it, i) => it.brinde ? {...it, preco: 0} : {...it, preco: EV.precos[i]});
+        const receita = r2(sum(itens.map(i => i.preco))), cmv = r2(sum(itens.map(i => i.custo))), troca = v.troca ? (Number(v.troca.valor)||0) : 0;
+        const aPagar = Math.max(0, r2(receita - troca));
+        let clientePaga = v.clientePaga, recebido = v.recebido, taxaValor = v.taxaValor || 0, taxaPct = v.taxaPct || 0;
+        if(mudouPag() || receita !== r2(v.receita)){ const pg = calcPag(aPagar, EV.forma, EV.parc, EV.modo); clientePaga = pg.clientePaga; recebido = pg.recebido; taxaValor = pg.taxaValor || 0; taxaPct = pg.taxaPct || 0; }
+        return {itens, receita, cmv, aPagar, clientePaga, recebido, taxaValor, taxaPct, lucro: r2(receita - cmv - taxaValor)};
+      };
+      const resumo = () => { const c = calc();
+        $("ev-sum").innerHTML = `<div class="sumrow"><span>Cliente paga</span><b>${R(c.clientePaga)}</b></div><div class="sumrow"><span>Você recebe</span><b>${R(c.recebido)}</b></div>${S.verCustos === false ? "" : `<div class="sumrow"><span>Lucro</span><b style="color:var(--gold-ink)">${R(c.lucro)}</b>${c.lucro !== r2(v.lucro) ? `<span class="sub" style="display:inline"> antes ${R(v.lucro)}</span>` : ""}</div>`}`; };
+      document.querySelectorAll("#modal [data-evp]").forEach(inp => maskMoney(inp, () => { EV.precos[+inp.dataset.evp] = parseMoney(inp.value); resumo(); }));
+      document.querySelectorAll("#modal [data-evf]").forEach(b => b.onclick = () => { EV.forma = b.dataset.evf; document.querySelectorAll("#modal [data-evf]").forEach(x => x.setAttribute("aria-pressed", x === b)); $("ev-cred").hidden = EV.forma !== "credito"; resumo(); });
+      document.querySelectorAll("#modal [data-evm]").forEach(b => b.onclick = () => { EV.modo = b.dataset.evm; document.querySelectorAll("#modal [data-evm]").forEach(x => x.setAttribute("aria-pressed", x === b)); resumo(); });
+      $("ev-parc").onchange = () => { EV.parc = +$("ev-parc").value; resumo(); };
+      $("ev-cli").oninput = () => { const c = S.cli.find(x => norm(x.nome) === norm($("ev-cli").value)); if(c && c.fone && !$("ev-fone").value) $("ev-fone").value = fone(c.fone); };
+      resumo();
+      $("ev-ok").onclick = async () => {
+        if((v.itens||[]).some((it, i) => !it.brinde && !EV.precos[i])) return $("ev-msg").innerHTML = `<div class="msg bad">Informe o preço de cada item.</div>`;
+        if(v.troca && r2(sum(EV.precos)) < Number(v.troca.valor)) return $("ev-msg").innerHTML = `<div class="msg bad">O total ficou menor que o valor da troca.</div>`;
+        if(!precisaNuvem()) return;
+        const btn = $("ev-ok"); btn.disabled = true; btn.textContent = "Salvando…";
+        try{
+        const cliNome = $("ev-cli").value.trim(), cli = S.cli.find(x => norm(x.nome) === norm(cliNome));
+        const precos = {}; (v.itens||[]).forEach((it, i) => { if(!it.brinde) precos[it.id] = EV.precos[i]; });
+        await rpc("editar_venda", {p_venda: id, p: {data: $("ev-data").value || null, cliente: {id: cli ? cli.id : "", nome: cliNome, fone: soDig($("ev-fone").value)},
+          vendedor: $("ev-vend").value.trim(), origem: $("ev-orig").value, obs: $("ev-obs").value.trim(),
+          forma: EV.forma, parcelas: EV.forma === "credito" ? EV.parc : 1, modo: EV.forma === "credito" ? EV.modo : null, precos}});
+        fecharModal(); await feito("Venda atualizada");
+        }catch(e){ erroNuvem(e); btn.disabled = false; btn.textContent = "Salvar alterações"; }
+      };
+    });
+}
+
 /* ---------- TERMO DE ENTREGA ---------- */
 function lojaInfo(){
   if(typeof S !== "undefined" && S.emp) return {nome: S.emp.nome, fone: S.emp.whatsapp || "", logo: S.emp.logo || "", cor: S.emp.cor || "#D5951D"};
@@ -1167,9 +1226,10 @@ V.vendas = {
       const ks = Object.keys(g).sort((a,b) => g[b].luc - g[a].luc);
       $(el).innerHTML = ks.length ? ks.map(k => `<tr><td><b>${esc(k)}</b></td><td class="r">${g[k].n}</td><td class="r nw">${R(g[k].rec)}</td><td class="r nw"><b>${R(g[k].luc)}</b></td></tr>`).join("") : `<tr><td colspan="4" class="empty">Nenhuma venda neste mês.</td></tr>`; };
     agrupa("vendedor", "vm-vend"); agrupa("origem", "vm-orig");
-    $("vm-lista").innerHTML = d.vs.length ? d.vs.map(v => `<tr><td class="nw">${dataV(v)}</td><td>${esc(v.cliente && v.cliente.nome || "—")}${v.vendedor || v.origem ? `<span class="sub">${esc([v.vendedor, v.origem].filter(Boolean).join(" · "))}</span>` : ""}</td><td>${esc((v.itens||[]).map(itNome).join(", "))}${v.troca ? `<span class="sub">Troca: ${esc(v.troca.nome)} · ${R(v.troca.valor)}</span>` : ""}</td><td class="nw">${formaNome(v)}${v.modo==="repassa" ? '<span class="sub">taxa paga pelo cliente</span>' : ""}</td><td class="r nw">${R(v.receita)}</td><td class="r nw">${v.taxaValor ? R(v.taxaValor) : "—"}</td><td class="r nw"><b>${R(v.lucro)}</b></td><td class="r nw"><button class="btn btn-ghost btn-sm" type="button" data-rec="${v.id}">Recibo</button> <button class="btn btn-danger btn-sm" type="button" data-est="${v.id}">Estornar</button></td></tr>`).join("")
+    $("vm-lista").innerHTML = d.vs.length ? d.vs.map(v => `<tr><td class="nw">${dataV(v)}</td><td>${esc(v.cliente && v.cliente.nome || "—")}${v.vendedor || v.origem ? `<span class="sub">${esc([v.vendedor, v.origem].filter(Boolean).join(" · "))}</span>` : ""}</td><td>${esc((v.itens||[]).map(itNome).join(", "))}${v.troca ? `<span class="sub">Troca: ${esc(v.troca.nome)} · ${R(v.troca.valor)}</span>` : ""}</td><td class="nw">${formaNome(v)}${v.modo==="repassa" ? '<span class="sub">taxa paga pelo cliente</span>' : ""}</td><td class="r nw">${R(v.receita)}</td><td class="r nw">${v.taxaValor ? R(v.taxaValor) : "—"}</td><td class="r nw"><b>${R(v.lucro)}</b></td><td class="r nw"><button class="btn btn-ghost btn-sm" type="button" data-rec="${v.id}">Recibo</button> <button class="btn btn-ghost btn-sm" type="button" data-edv="${v.id}">Editar</button> <button class="btn btn-danger btn-sm" type="button" data-est="${v.id}">Estornar</button></td></tr>`).join("")
       : `<tr><td colspan="8" class="empty">Nenhuma venda neste mês.</td></tr>`;
     $("vm-lista").querySelectorAll("[data-rec]").forEach(b => b.onclick = () => modalRecibo(b.dataset.rec));
+    $("vm-lista").querySelectorAll("[data-edv]").forEach(b => b.onclick = () => modalEditarVenda(b.dataset.edv));
     $("vm-lista").querySelectorAll("[data-est]").forEach(b => b.onclick = e => confirmar(e.currentTarget, "Confirmar estorno", () => estornar(b.dataset.est)));
   }
 };
