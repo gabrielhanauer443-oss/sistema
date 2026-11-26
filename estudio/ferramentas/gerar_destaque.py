@@ -55,8 +55,9 @@ def gerar(marca, camp, pasta, formato):
         d.text((w / 2, y + (f.size + 26) / 2), tit, font=f, fill=cor(c["texto_destaque"]), anchor="mm")
         y += f.size + 26 + (24 if story else 14)
 
-    f = caber(d, dst["nome"].upper(), "titulo", w - 2 * m, 170 if story else 120)
-    d.text((w // 2, y), dst["nome"].upper(), font=f, fill=cor(c["texto"]), anchor="mt")
+    nome = dst["nome"] if dst.get("manter_maiusculas") else dst["nome"].upper()  # "iPhone" não vira "IPHONE"
+    f = caber(d, nome, "titulo", w - 2 * m, 170 if story else 104)
+    d.text((w // 2, y), nome, font=f, fill=cor(c["texto"]), anchor="mt")
     y += f.size + (14 if story else 6)
     if dst.get("detalhe"):
         f = caber(d, dst["detalhe"], "SemiBold", w - 2 * m, 40 if story else 34)
@@ -65,17 +66,31 @@ def gerar(marca, camp, pasta, formato):
 
     # rodapé
     rod = h - m - (110 if story else 0)
-    for linha in reversed(marca.get("avisos_obrigatorios", [])):
+    # regras da promoção (letra miúda) + avisos legais da marca
+    from gerar_artes import quebrar
+    miudas = []
+    for linha in list(camp.get("regras", [])) + list(marca.get("avisos_obrigatorios", [])):
+        miudas += quebrar(d, linha, fonte(22, "Medium"), w - 2 * m)
+    for linha in reversed(miudas):
         d.text((w // 2, rod), linha, font=fonte(22, "Medium"), fill=cor(c["texto_suave"]), anchor="mb")
         rod -= 30
     for linha in reversed([e for e in (camp.get("validade", ""), marca.get("contato", "")) if e]):
         d.text((w // 2, rod - 4), linha, font=fonte(28, "SemiBold"), fill=cor(c["texto"]), anchor="mb")
         rod -= 42
+    # faixa de chamadas (ex.: "Confira as cores disponíveis")
+    if dst.get("faixa"):
+        ff = caber(d, dst["faixa"].upper(), "Bold", w - 2 * m - 40, 30 if story else 26)
+        tw = d.textlength(dst["faixa"].upper(), font=ff)
+        rod -= 8
+        d.rounded_rectangle((w / 2 - tw / 2 - 24, rod - ff.size - 22, w / 2 + tw / 2 + 24, rod), 30,
+                            outline=cor(c["destaque"]), width=3)
+        d.text((w / 2, rod - (ff.size + 22) / 2), dst["faixa"].upper(), font=ff, fill=cor(c["destaque"]), anchor="mm")
+        rod -= ff.size + 22 + 6
 
     # preço
     tem_de = bool(dst.get("preco_de"))
     rot = 44 if dst.get("rotulo_preco") else 0
-    alto = (250 if story else 190) + (50 if tem_de else 0) + rot
+    alto = (250 if story else 160) + (50 if tem_de else 0) + rot
     py1 = rod - 24
     py0 = py1 - alto
     d.rounded_rectangle((m, py0, w - m, py1), 40, fill=cor(c["destaque"]))
@@ -94,10 +109,10 @@ def gerar(marca, camp, pasta, formato):
         tw = d.textlength(txt, font=fd)
         d.line((w / 2 - tw / 2, ty + 22, w / 2 + tw / 2, ty + 22), fill=cor(c["texto_destaque"]), width=4)
         ty += 50
-    fp = caber(d, preco_br(dst["preco_por"]), "Black", w - 2 * m - 80, 170 if story else 130)
+    fp = caber(d, preco_br(dst["preco_por"]), "Black", w - 2 * m - 80, 170 if story else 110)
     d.text((w / 2, (ty + py1 - rot) / 2 + 6), preco_br(dst["preco_por"]), font=fp, fill=cor(c["texto_destaque"]), anchor="mm")
     if dst.get("rotulo_preco"):
-        d.text((w / 2, py1 - 22), dst["rotulo_preco"].upper(), font=fonte(28, "SemiBold"), fill=cor(c["texto_destaque"]), anchor="mb")
+        d.text((w / 2, py1 - 22), (dst["rotulo_preco"] if dst.get("manter_maiusculas") else dst["rotulo_preco"].upper()), font=fonte(28, "SemiBold"), fill=cor(c["texto_destaque"]), anchor="mb")
 
     # fotos lado a lado
     fotos = [pasta / "fotos" / f for f in dst["fotos"]]

@@ -1,0 +1,23 @@
+# Black Friday South Import's, 27/11/2026 (postar cedo)
+# Foto: pasta "black da south" do Drive (IMG_9926.PNG, pilha de caixas do 18 Pro Max).
+# Pedido do Gabriel em 26/11: só o iPhone 18 Pro Max 256 GB com R$ 500 OFF (18 Pro não entra).
+# [CONFIRMAR] se o desconto vale para todas as cores e por quanto tempo (deixei 27/11 ou enquanto durar o estoque).
+marca: south
+tema: black
+recorte: true
+titulo: "Black Friday"
+validade: "Válido em 27/11/2026 ou enquanto durar o estoque"
+formatos: [feed, story]
+regras:
+  - "*Desconto de R$ 500 sobre o preço de tabela do iPhone 18 Pro Max 256 GB. Não cumulativo com outras promoções."  # [CONFIRMAR] regra padrão sugerida
+  - "Cores e unidades sujeitas à disponibilidade. Confira as regras completas da promoção no direct ou na loja."
+produtos: []
+destaque:
+  nome: "iPhone 18 Pro Max"
+  manter_maiusculas: true
+  detalhe: "256 GB  •  Escolha sua cor"
+  fotos: [IMG_9926.PNG]
+  chamada: "Black Friday South"
+  preco_por: "R$ 500 OFF*"
+  rotulo_preco: "no iPhone 18 Pro Max 256 GB"
+  faixa: "Confira as cores disponíveis no direct"

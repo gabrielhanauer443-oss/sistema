@@ -1,7 +1,8 @@
 # South Import's (@southimports_sl), loja de iPhone e Apple
 # Itens com [CONFIRMAR] ainda não foram confirmados pelo Gabriel.
+# O símbolo da South é o mesmo monograma "H" da Hanauer, em dourado.
 nome: South Import's
-logo: marcas/south/logo.png          # logo pequeno (113px) tirado do sistema; troque por um maior se tiver
+logo: marcas/south/logo-grande.png   # monograma dourado + SOUTH IMPORT'S (logo.png = versão pequena antiga)
 contato: "@southimports_sl"          # [CONFIRMAR] adicionar WhatsApp
 cores:                               # preto + dourado do logo
   fundo_topo: "#1d1d21"
@@ -11,3 +12,24 @@ cores:                               # preto + dourado do logo
   destaque: "#E8B332"
   texto_destaque: "#1a1205"
 avisos_obrigatorios: []
+
+temas:
+  black:                             # Black Friday: mesmo fundo preto em relevo da Hanauer, com o símbolo dourado
+    brilho: "#8C6A1C"
+    cores:
+      fundo_topo: "#1B1812"
+      fundo_base: "#000000"
+      texto: "#FFFFFF"
+      texto_suave: "#A39A88"
+      destaque: "#E8B332"
+      texto_destaque: "#1A1205"
+      cartao: "#1A1205"
+      texto_cartao: "#E8B332"
+    relevo:
+      monograma: marcas/south/monograma.png
+      nome: marcas/south/nome.png
+      passo: 300
+      forca: 0.55
+      luz: "#4A4130"
+      sombra: "#000000"
+      face: "#2A251B"
