@@ -15,3 +15,18 @@ cores:                               # tiradas do projeto de identidade
 avisos_obrigatorios:
   - "BEBA COM MODERAÇÃO."
   - "VENDA PROIBIDA PARA MENORES DE 18 ANOS. SE BEBER, NÃO DIRIJA."
+
+# Temas alternativos (no briefing: `tema: gelo`). "gelo" = 1ª página do projeto:
+# fundo cor gelo com o logo em azul.
+temas:
+  gelo:
+    logo: marcas/hanauer/logo-azul.png
+    cores:
+      fundo_topo: "#F4F8FD"
+      fundo_base: "#D3E0F0"
+      texto: "#233F6E"
+      texto_suave: "#4D6389"
+      destaque: "#233F6E"
+      texto_destaque: "#F4F4EC"
+      cartao: "#FFFFFF"
+      texto_cartao: "#233F6E"

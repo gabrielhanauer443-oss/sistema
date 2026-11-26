@@ -117,6 +117,17 @@ def colar_produto(arte, foto, caixa, borda=None):
     arte.alpha_composite(foto, (px, py))
 
 
+def aplicar_tema(marca, camp):
+    """Troca cores/logo da marca pelo tema pedido no briefing (ex.: tema: gelo)."""
+    tema = camp.get("tema")
+    if tema:
+        t = marca.get("temas", {})[tema]
+        marca = dict(marca, cores=dict(marca["cores"], **t.get("cores", {})))
+        if t.get("logo"):
+            marca["logo"] = t["logo"]
+    return marca
+
+
 def gerar(marca, camp, prod, pasta, formato):
     w, h = FORMATOS[formato]
     m = 70  # margem
@@ -243,6 +254,7 @@ def main():
         pasta = (Path.cwd() / pasta)
     briefing = yaml.safe_load((pasta / "briefing.yaml").read_text(encoding="utf-8"))
     marca = yaml.safe_load((RAIZ / "marcas" / briefing["marca"] / "marca.yaml").read_text(encoding="utf-8"))
+    marca = aplicar_tema(marca, briefing)
     saida = pasta / "saida"
     saida.mkdir(exist_ok=True)
     formatos = briefing.get("formatos", ["feed", "story"])

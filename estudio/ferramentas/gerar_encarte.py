@@ -13,10 +13,10 @@ import sys
 from pathlib import Path
 
 import yaml
-from PIL import Image, ImageDraw, ImageOps
+from PIL import Image, ImageDraw, ImageFilter, ImageOps
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from gerar_artes import RAIZ, caber, cor, fonte, fundo, preco_br  # noqa: E402
+from gerar_artes import RAIZ, aplicar_tema, caber, cor, fonte, fundo, preco_br  # noqa: E402
 
 FORMATOS = {"feed": (1080, 1350), "story": (1080, 1920)}
 
@@ -36,7 +36,9 @@ def recorte_garrafa(foto, prop):
 def gerar(marca, camp, pasta, formato):
     w, h = FORMATOS[formato]
     m = 50
-    c = marca["cores"]
+    c = dict(marca["cores"])
+    c.setdefault("cartao", c["destaque"])
+    c.setdefault("texto_cartao", c["texto_destaque"])
     arte = fundo(w, h, cor(c["fundo_topo"]), cor(c["fundo_base"])).convert("RGBA")
     d = ImageDraw.Draw(arte)
     y = m + (60 if formato == "story" else 0)
@@ -90,7 +92,12 @@ def gerar(marca, camp, pasta, formato):
         bw, bh = box[2] - box[0], box[3] - box[1]
 
         # cartão creme
-        d.rounded_rectangle(box, 22, fill=cor(c["destaque"]))
+        # sombra leve + cartão
+        sombra = Image.new("RGBA", arte.size, (0, 0, 0, 0))
+        ImageDraw.Draw(sombra).rounded_rectangle((box[0], box[1] + 6, box[2], box[3] + 6), 22, fill=(20, 40, 80, 60))
+        arte.alpha_composite(sombra.filter(ImageFilter.GaussianBlur(8)))
+        d = ImageDraw.Draw(arte)
+        d.rounded_rectangle(box, 22, fill=cor(c["cartao"]))
         pad = 8
         tam_nome = 22 if formato == "feed" else 26
         tam_preco = 42 if formato == "feed" else 52
@@ -110,26 +117,26 @@ def gerar(marca, camp, pasta, formato):
             fs = fonte(26 if formato == "feed" else 30, "Black")
             tw = d.textlength(p["selo"], font=fs)
             sx1, sy0 = box[2] - pad - 6, box[1] + pad + 6
-            d.rounded_rectangle((sx1 - tw - 24, sy0, sx1, sy0 + 42), 21, fill=cor(c["texto_destaque"]))
-            d.text((sx1 - (tw + 24) / 2, sy0 + 21), p["selo"], font=fs, fill=cor(c["destaque"]), anchor="mm")
+            d.rounded_rectangle((sx1 - tw - 24, sy0, sx1, sy0 + 42), 21, fill=cor(c["texto_cartao"]))
+            d.text((sx1 - (tw + 24) / 2, sy0 + 21), p["selo"], font=fs, fill=cor(c["cartao"]), anchor="mm")
 
         # nome + preço
         ty = box[1] + pad + fh + 8
         larg = bw - 16
         fn = caber(d, p["nome"], "Bold", larg, tam_nome, 14)
-        d.text(((box[0] + box[2]) / 2, ty), p["nome"], font=fn, fill=cor(c["texto_destaque"]), anchor="mt")
+        d.text(((box[0] + box[2]) / 2, ty), p["nome"], font=fn, fill=cor(c["texto_cartao"]), anchor="mt")
         base = box[3] - 10
         preco = preco_br(p["preco_por"]) if p.get("preco_por") not in (None, "") else "R$ ?"
         fp = caber(d, preco, "Black", larg, tam_preco)
-        d.text(((box[0] + box[2]) / 2, base), preco, font=fp, fill=cor(c["texto_destaque"]), anchor="mb")
+        d.text(((box[0] + box[2]) / 2, base), preco, font=fp, fill=cor(c["texto_cartao"]), anchor="mb")
         if p.get("preco_de"):
             txt = preco_br(p["preco_de"])
             fd = fonte(20 if formato == "feed" else 24, "SemiBold")
             yy = base - fp.size - 6
-            d.text(((box[0] + box[2]) / 2, yy), txt, font=fd, fill=cor(c["texto_destaque"]), anchor="mb")
+            d.text(((box[0] + box[2]) / 2, yy), txt, font=fd, fill=cor(c["texto_cartao"]), anchor="mb")
             tw = d.textlength(txt, font=fd)
             cx = (box[0] + box[2]) / 2
-            d.line((cx - tw / 2, yy - fd.size * 0.4, cx + tw / 2, yy - fd.size * 0.4), fill=cor(c["texto_destaque"]), width=3)
+            d.line((cx - tw / 2, yy - fd.size * 0.4, cx + tw / 2, yy - fd.size * 0.4), fill=cor(c["texto_cartao"]), width=3)
 
     return arte.convert("RGB")
 
@@ -140,6 +147,7 @@ def main():
     pasta = Path(sys.argv[1]).resolve()
     camp = yaml.safe_load((pasta / "briefing.yaml").read_text(encoding="utf-8"))
     marca = yaml.safe_load((RAIZ / "marcas" / camp["marca"] / "marca.yaml").read_text(encoding="utf-8"))
+    marca = aplicar_tema(marca, camp)
     (pasta / "saida").mkdir(exist_ok=True)
     for fmt in camp.get("formatos", ["feed", "story"]):
         out = pasta / "saida" / f"encarte-{fmt}.jpg"

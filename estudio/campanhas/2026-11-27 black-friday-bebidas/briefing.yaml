@@ -1,22 +1,32 @@
-# Black Friday Hanauer, 27/11/2026 (encarte único com todos os produtos)
-# Preços confirmados pelo Gabriel em 26/11: Jack Daniel's 134,90 | Red Label 94,90 | Tanqueray 100,00
-# Gelo de coco 3,90: descartado (não tem em estoque).
-# [CONFIRMAR] preços vazios; Red Label não tem foto na pasta (só Blonde).
+# Black Friday Hanauer, 27/11/2026
+# Encarte único (gerar_encarte.py) + arte exclusiva do Jack Daniel's (gerar_destaque.py).
+# Preços confirmados pelo Gabriel em 26/11/2026.
+# Fora do encarte: gelo de coco (sem estoque); Jim Beam (sem preço);
+# Red Label 94,90 [CONFIRMAR]: não há foto de Red Label na pasta (só Blonde).
 marca: hanauer
+tema: gelo                 # fundo cor gelo + azul da marca (1ª página do projeto)
 titulo: "Black Friday"
 subtitulo: "Só amanhã, 27/11"
 validade: "Válido em 27/11/2026 ou enquanto durar o estoque"
 formatos: [feed, story]
 produtos:
-  - {nome: "Jack Daniel's Honey 1L",       foto: IMG_0637.HEIC, preco_por: 134.90}
-  - {nome: "Jack Daniel's Apple 1L",       foto: IMG_0636.HEIC, preco_por: 134.90}
-  - {nome: "Jack Daniel's Fire 1L",        foto: IMG_0638.HEIC, preco_por: 134.90}
-  - {nome: "Tanqueray London Dry",         foto: IMG_0730.HEIC, preco_por: 100.00}
-  - {nome: "Absolut Raspberri",            foto: IMG_0628.HEIC, preco_por: ""}
-  - {nome: "Johnnie Walker Blonde",        foto: IMG_0627.HEIC, preco_por: ""}
-  - {nome: "Buchanan's 12 anos",           foto: IMG_0629.HEIC, preco_por: ""}
-  - {nome: "Old Parr 12 anos",             foto: IMG_0630.HEIC, preco_por: ""}
-  - {nome: "Jim Beam Bourbon 1L",          foto: IMG_0631.HEIC, preco_por: ""}
-  - {nome: "Beefeater London Dry",         foto: IMG_0728.HEIC, preco_por: ""}
-  - {nome: "Beefeater Lemon & Ginger",     foto: IMG_0729.HEIC, preco_por: ""}
-  - {nome: "Ballena Cream Tequila",        foto: IMG_0625.HEIC, preco_por: ""}
+  - {nome: "Jack Daniel's Honey 1L",    foto: IMG_0637.HEIC, preco_por: 134.90}
+  - {nome: "Jack Daniel's Apple 1L",    foto: IMG_0636.HEIC, preco_por: 134.90}
+  - {nome: "Jack Daniel's Fire 1L",     foto: IMG_0638.HEIC, preco_por: 134.90}
+  - {nome: "Buchanan's 12 anos",        foto: IMG_0629.HEIC, preco_por: 169.90}
+  - {nome: "Old Parr 12 anos",          foto: IMG_0630.HEIC, preco_por: 109.90}
+  - {nome: "Tanqueray London Dry",      foto: IMG_0730.HEIC, preco_por: 100.00}
+  - {nome: "Beefeater London Dry",      foto: IMG_0728.HEIC, preco_por: 109.90}
+  - {nome: "Beefeater Lemon & Ginger",  foto: IMG_0729.HEIC, preco_por: 109.90}
+  - {nome: "Absolut Raspberri",         foto: IMG_0628.HEIC, preco_por: 79.90}
+  - {nome: "Ballena Cream Tequila",     foto: IMG_0625.HEIC, preco_por: 119.90}
+  - {nome: "Johnnie Walker Blonde",     foto: IMG_0627.HEIC, preco_por: "", fora: true}
+  - {nome: "Jim Beam Bourbon 1L",       foto: IMG_0631.HEIC, preco_por: "", fora: true}
+
+destaque:
+  nome: "Jack Daniel's"
+  detalhe: "Honey  •  Apple  •  Fire   |   1 litro"
+  fotos: [IMG_0637.HEIC, IMG_0636.HEIC, IMG_0638.HEIC]
+  chamada: "Preço incrível"
+  preco_por: 134.90
+  rotulo_preco: "cada garrafa"
