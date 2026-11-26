@@ -7,6 +7,10 @@ Uso:
 Precisa de: pip install "rembg[cpu]" pillow-heif
 Na 1ª vez baixa o modelo de recorte (~180 MB). Foto que já tem recorte é pulada;
 para refazer, apague o PNG em recortes/.
+
+Se algum recorte ficar com pedaço transparente (aconteceu com a caixa do Jack Honey),
+apague o PNG dele e rode de novo com outro modelo:
+    python ferramentas/recortar.py "<pasta>" u2net
 """
 import sys
 from pathlib import Path
@@ -37,7 +41,7 @@ def main():
         destino = saida / (f.stem + ".png")
         if destino.exists():
             continue
-        sessao = sessao or new_session("isnet-general-use")
+        sessao = sessao or new_session(sys.argv[2] if len(sys.argv) > 2 else "isnet-general-use")
         im = ImageOps.exif_transpose(Image.open(f)).convert("RGB")
         im.thumbnail((2000, 2000))
         out = remove(im, session=sessao)
