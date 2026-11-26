@@ -1,13 +1,21 @@
 # Black Friday Hanauer, 27/11/2026
-# [CONFIRMAR] produtos, fotos e preços: o Gabriel vai colocar as fotos em fotos/ e passar os preços.
+# Fotos: pasta do Drive da Hanauer (12 fotos HEIC). Nomes lidos dos rótulos.
+# [CONFIRMAR] volume (ml/L) e preços de cada um: preencher preco_de / preco_por / selo.
 marca: hanauer
 titulo: "Black Friday"
 subtitulo: "Só amanhã, 27/11"
 validade: "Válido em 27/11/2026 ou enquanto durar o estoque"
 formatos: [feed, story]
 produtos:
-  - nome: "[CONFIRMAR] Produto 1"
-    foto: produto1.png
-    preco_de: "R$ 00,00"
-    preco_por: "R$ 00,00"
-    selo: ""
+  - {nome: "Ballena Cream Tequila",           foto: IMG_0625.HEIC, preco_de: "", preco_por: "R$ 00,00", selo: ""}
+  - {nome: "Johnnie Walker Blonde",           foto: IMG_0627.HEIC, preco_de: "", preco_por: "R$ 00,00", selo: ""}
+  - {nome: "Absolut Raspberri",               foto: IMG_0628.HEIC, preco_de: "", preco_por: "R$ 00,00", selo: ""}
+  - {nome: "Buchanan's Deluxe 12 anos",       foto: IMG_0629.HEIC, preco_de: "", preco_por: "R$ 00,00", selo: ""}
+  - {nome: "Grand Old Parr 12 anos",          foto: IMG_0630.HEIC, preco_de: "", preco_por: "R$ 00,00", selo: ""}
+  - {nome: "Jim Beam Bourbon 1L",             foto: IMG_0631.HEIC, preco_de: "", preco_por: "R$ 00,00", selo: ""}
+  - {nome: "Jack Daniel's Tennessee Apple 1L", foto: IMG_0636.HEIC, preco_de: "", preco_por: "R$ 00,00", selo: ""}
+  - {nome: "Jack Daniel's Tennessee Honey 1L", foto: IMG_0637.HEIC, preco_de: "", preco_por: "R$ 00,00", selo: ""}
+  - {nome: "Jack Daniel's Tennessee Fire 1L", foto: IMG_0638.HEIC, preco_de: "", preco_por: "R$ 00,00", selo: ""}
+  - {nome: "Beefeater London Dry Gin",        foto: IMG_0728.HEIC, preco_de: "", preco_por: "R$ 00,00", selo: ""}
+  - {nome: "Beefeater Botanics Lemon & Ginger", foto: IMG_0729.HEIC, preco_de: "", preco_por: "R$ 00,00", selo: ""}
+  - {nome: "Tanqueray London Dry Gin",        foto: IMG_0730.HEIC, preco_de: "", preco_por: "R$ 00,00", selo: ""}

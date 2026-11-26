@@ -1,15 +1,16 @@
 # Hanauer Bebidas e Importados
 # Itens com [CONFIRMAR] ainda não foram confirmados pelo Gabriel.
 nome: Hanauer Bebidas e Importados
-logo: marcas/hanauer/logo.png        # coloque o logo aqui (PNG com fundo transparente)
+logo: marcas/hanauer/logo.png        # versão clara (para fundo azul); logo-azul.png é para fundo claro
+# Identidade: "Projeto para Aprovação.pdf" no Drive. Azul-marinho + creme, monograma H, letras serifadas.
 contato: ""                          # [CONFIRMAR] WhatsApp / @ do Instagram / endereço
-cores:                               # [CONFIRMAR] provisório: preto e dourado
-  fundo_topo: "#1a1a1a"
-  fundo_base: "#000000"
-  texto: "#ffffff"
-  texto_suave: "#b9b9b9"
-  destaque: "#E8B332"
-  texto_destaque: "#111111"
+cores:                               # tiradas do projeto de identidade
+  fundo_topo: "#2B4C82"
+  fundo_base: "#14284A"              # azul-marinho da marca: #233F6E
+  texto: "#F4F4EC"                   # creme
+  texto_suave: "#AFC0DA"
+  destaque: "#F4F4EC"
+  texto_destaque: "#233F6E"
 # Bebida alcoólica: estes avisos vão em TODA arte (exigência legal/CONAR). Não remover.
 avisos_obrigatorios:
   - "BEBA COM MODERAÇÃO."

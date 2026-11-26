@@ -4,7 +4,7 @@
 
 1. Instale o **Google Drive para computador** (assim o Drive vira uma pasta no PC, tipo `G:\Meu Drive`).
 2. Copie esta pasta `estudio` inteira para dentro do Drive.
-3. Instale o Python (python.org, marque "Add to PATH") e rode no terminal: `pip install pillow pyyaml`
+3. Instale o Python (python.org, marque "Add to PATH") e rode no terminal: `pip install pillow pyyaml pillow-heif`
 4. Coloque o logo da Hanauer em `marcas/hanauer/logo.png` (PNG com fundo transparente) e confira as cores e o contato em `marcas/hanauer/marca.yaml`.
 
 ## 2. Abrir o Claude nesta pasta

@@ -34,4 +34,4 @@ Campanha nova: copiar `campanhas/_modelo/` para `campanhas/AAAA-MM-DD nome/`.
 
 ## Requisitos
 
-Python 3 com `pip install pillow pyyaml`. As fontes (Anton e Montserrat, licença OFL) estão em `ferramentas/fontes/`.
+Python 3 com `pip install pillow pyyaml pillow-heif`. As fontes (Anton e Montserrat, licença OFL) estão em `ferramentas/fontes/`.
