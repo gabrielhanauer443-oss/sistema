@@ -1,21 +1,22 @@
-# Black Friday Hanauer, 27/11/2026
-# Fotos: pasta do Drive da Hanauer (12 fotos HEIC). Nomes lidos dos rótulos.
-# [CONFIRMAR] volume (ml/L) e preços de cada um: preencher preco_de / preco_por / selo.
+# Black Friday Hanauer, 27/11/2026 (encarte único com todos os produtos)
+# Preços confirmados pelo Gabriel em 26/11: Jack Daniel's 134,90 | Red Label 94,90 | Tanqueray 100,00
+# Gelo de coco 3,90: descartado (não tem em estoque).
+# [CONFIRMAR] preços vazios; Red Label não tem foto na pasta (só Blonde).
 marca: hanauer
 titulo: "Black Friday"
 subtitulo: "Só amanhã, 27/11"
 validade: "Válido em 27/11/2026 ou enquanto durar o estoque"
 formatos: [feed, story]
 produtos:
-  - {nome: "Ballena Cream Tequila",           foto: IMG_0625.HEIC, preco_de: "", preco_por: "R$ 00,00", selo: ""}
-  - {nome: "Johnnie Walker Blonde",           foto: IMG_0627.HEIC, preco_de: "", preco_por: "R$ 00,00", selo: ""}
-  - {nome: "Absolut Raspberri",               foto: IMG_0628.HEIC, preco_de: "", preco_por: "R$ 00,00", selo: ""}
-  - {nome: "Buchanan's Deluxe 12 anos",       foto: IMG_0629.HEIC, preco_de: "", preco_por: "R$ 00,00", selo: ""}
-  - {nome: "Grand Old Parr 12 anos",          foto: IMG_0630.HEIC, preco_de: "", preco_por: "R$ 00,00", selo: ""}
-  - {nome: "Jim Beam Bourbon 1L",             foto: IMG_0631.HEIC, preco_de: "", preco_por: "R$ 00,00", selo: ""}
-  - {nome: "Jack Daniel's Tennessee Apple 1L", foto: IMG_0636.HEIC, preco_de: "", preco_por: "R$ 00,00", selo: ""}
-  - {nome: "Jack Daniel's Tennessee Honey 1L", foto: IMG_0637.HEIC, preco_de: "", preco_por: "R$ 00,00", selo: ""}
-  - {nome: "Jack Daniel's Tennessee Fire 1L", foto: IMG_0638.HEIC, preco_de: "", preco_por: "R$ 00,00", selo: ""}
-  - {nome: "Beefeater London Dry Gin",        foto: IMG_0728.HEIC, preco_de: "", preco_por: "R$ 00,00", selo: ""}
-  - {nome: "Beefeater Botanics Lemon & Ginger", foto: IMG_0729.HEIC, preco_de: "", preco_por: "R$ 00,00", selo: ""}
-  - {nome: "Tanqueray London Dry Gin",        foto: IMG_0730.HEIC, preco_de: "", preco_por: "R$ 00,00", selo: ""}
+  - {nome: "Jack Daniel's Honey 1L",       foto: IMG_0637.HEIC, preco_por: 134.90}
+  - {nome: "Jack Daniel's Apple 1L",       foto: IMG_0636.HEIC, preco_por: 134.90}
+  - {nome: "Jack Daniel's Fire 1L",        foto: IMG_0638.HEIC, preco_por: 134.90}
+  - {nome: "Tanqueray London Dry",         foto: IMG_0730.HEIC, preco_por: 100.00}
+  - {nome: "Absolut Raspberri",            foto: IMG_0628.HEIC, preco_por: ""}
+  - {nome: "Johnnie Walker Blonde",        foto: IMG_0627.HEIC, preco_por: ""}
+  - {nome: "Buchanan's 12 anos",           foto: IMG_0629.HEIC, preco_por: ""}
+  - {nome: "Old Parr 12 anos",             foto: IMG_0630.HEIC, preco_por: ""}
+  - {nome: "Jim Beam Bourbon 1L",          foto: IMG_0631.HEIC, preco_por: ""}
+  - {nome: "Beefeater London Dry",         foto: IMG_0728.HEIC, preco_por: ""}
+  - {nome: "Beefeater Lemon & Ginger",     foto: IMG_0729.HEIC, preco_por: ""}
+  - {nome: "Ballena Cream Tequila",        foto: IMG_0625.HEIC, preco_por: ""}
