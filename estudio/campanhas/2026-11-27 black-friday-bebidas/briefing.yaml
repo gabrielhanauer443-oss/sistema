@@ -7,8 +7,8 @@ marca: hanauer
 tema: gelo                 # fundo cor gelo com a marca em relevo + azul da marca
 recorte: true              # usa as garrafas recortadas (ferramentas/recortar.py)
 titulo: "Black Friday"
-subtitulo: "Só amanhã, 27/11"
-validade: "Válido em 27/11/2026 ou enquanto durar o estoque"
+subtitulo: "Só hoje, 27/11"
+validade: "Válido somente hoje, 27/11/2026, ou enquanto durar o estoque"
 formatos: [feed, story]
 produtos:
   - {nome: "Jack Daniel's Honey 1L",    foto: IMG_0637.HEIC, preco_por: 134.90}
