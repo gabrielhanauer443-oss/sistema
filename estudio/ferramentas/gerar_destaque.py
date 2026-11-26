@@ -22,7 +22,7 @@ from PIL import Image, ImageDraw, ImageFilter
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from gerar_artes import RAIZ, aplicar_tema, caber, cor, fonte, fundo, preco_br  # noqa: E402
-from gerar_encarte import FORMATOS, recorte_garrafa  # noqa: E402
+from gerar_encarte import FORMATOS, achar_recorte, colar_recorte, fundo_marca, recorte_garrafa  # noqa: E402
 
 
 def gerar(marca, camp, pasta, formato):
@@ -32,7 +32,7 @@ def gerar(marca, camp, pasta, formato):
     c = dict(marca["cores"])
     c.setdefault("cartao", c["destaque"])
     c.setdefault("texto_cartao", c["texto_destaque"])
-    arte = fundo(w, h, cor(c["fundo_topo"]), cor(c["fundo_base"])).convert("RGBA")
+    arte = fundo_marca(marca, w, h)
     d = ImageDraw.Draw(arte)
     story = formato == "story"
     y = m + (60 if story else 0)
@@ -104,6 +104,13 @@ def gerar(marca, camp, pasta, formato):
     area_y0, area_y1 = y, py0 - (50 if dst.get("chamada") else 30)
     fh = area_y1 - area_y0
     fw = int((w - 2 * m - gap * (n - 1)) / n)
+    if camp.get("recorte") and all(achar_recorte(pasta, f) for f in dst["fotos"]):
+        # garrafas recortadas lado a lado, levemente sobrepostas
+        larg_slot = int((w - 2 * m) / n * 1.12)
+        for i, f in enumerate(dst["fotos"]):
+            cx = m + (w - 2 * m) * (i + 0.5) / n
+            colar_recorte(arte, achar_recorte(pasta, f), (int(cx - larg_slot / 2), area_y0, int(cx + larg_slot / 2), area_y1 - 10))
+        return arte.convert("RGB")
     for i, fp_ in enumerate(fotos):
         x0 = m + i * (fw + gap)
         sombra = Image.new("RGBA", arte.size, (0, 0, 0, 0))

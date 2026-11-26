@@ -17,6 +17,36 @@ from PIL import Image, ImageDraw, ImageFilter, ImageOps
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from gerar_artes import RAIZ, aplicar_tema, caber, cor, fonte, fundo, preco_br  # noqa: E402
+from textura import fundo_relevo  # noqa: E402
+
+
+def fundo_marca(marca, w, h):
+    """Fundo com relevo da marca (se o tema pedir) ou degradê simples."""
+    c = marca["cores"]
+    rel = marca.get("relevo")
+    if rel:
+        return fundo_relevo(w, h, c["fundo_topo"], c["fundo_base"], RAIZ / rel["monograma"],
+                            RAIZ / rel["nome"] if rel.get("nome") else None, rel.get("passo", 260), rel.get("forca", 1.0))
+    return fundo(w, h, cor(c["fundo_topo"]), cor(c["fundo_base"])).convert("RGBA")
+
+
+def achar_recorte(pasta, foto):
+    p = pasta / "recortes" / (Path(foto).stem + ".png")
+    return p if p.exists() else None
+
+
+def colar_recorte(arte, rec, caixa, sombra=True):
+    """Cola a garrafa recortada centrada na base da caixa, com sombra de chão."""
+    x0, y0, x1, y1 = caixa
+    img = Image.open(rec).convert("RGBA")
+    img.thumbnail((x1 - x0, y1 - y0), Image.LANCZOS)
+    px = x0 + (x1 - x0 - img.width) // 2
+    py = y1 - img.height
+    if sombra:
+        s = Image.new("RGBA", arte.size, (0, 0, 0, 0))
+        ImageDraw.Draw(s).ellipse((px + img.width * 0.08, y1 - 14, px + img.width * 0.92, y1 + 14), fill=(20, 40, 80, 120))
+        arte.alpha_composite(s.filter(ImageFilter.GaussianBlur(10)))
+    arte.alpha_composite(img, (px, py))
 
 FORMATOS = {"feed": (1080, 1350), "story": (1080, 1920)}
 
@@ -39,9 +69,10 @@ def gerar(marca, camp, pasta, formato):
     c = dict(marca["cores"])
     c.setdefault("cartao", c["destaque"])
     c.setdefault("texto_cartao", c["texto_destaque"])
-    arte = fundo(w, h, cor(c["fundo_topo"]), cor(c["fundo_base"])).convert("RGBA")
+    arte = fundo_marca(marca, w, h)
     d = ImageDraw.Draw(arte)
     y = m + (60 if formato == "story" else 0)
+    usar_recorte = camp.get("recorte", False)
 
     # cabeçalho: logo + título + subtítulo
     logo = RAIZ / marca["logo"] if marca.get("logo") else None
@@ -76,7 +107,7 @@ def gerar(marca, camp, pasta, formato):
     if n <= 6:
         cols = 3 if formato == "feed" else 2
     linhas = math.ceil(n / cols)
-    gap = 14
+    gap = 14 if not usar_recorte else 8
     cw = (w - 2 * m - gap * (cols - 1)) / cols
     ch = (rod - y - gap * (linhas - 1)) / linhas
 
@@ -92,26 +123,34 @@ def gerar(marca, camp, pasta, formato):
         bw, bh = box[2] - box[0], box[3] - box[1]
 
         # cartão creme
-        # sombra leve + cartão
-        sombra = Image.new("RGBA", arte.size, (0, 0, 0, 0))
-        ImageDraw.Draw(sombra).rounded_rectangle((box[0], box[1] + 6, box[2], box[3] + 6), 22, fill=(20, 40, 80, 60))
-        arte.alpha_composite(sombra.filter(ImageFilter.GaussianBlur(8)))
-        d = ImageDraw.Draw(arte)
-        d.rounded_rectangle(box, 22, fill=cor(c["cartao"]))
-        pad = 8
         tam_nome = 22 if formato == "feed" else 26
         tam_preco = 42 if formato == "feed" else 52
-        area_txt = tam_nome + tam_preco + 30 + (26 if p.get("preco_de") else 0)
-        fw, fh = bw - 2 * pad, bh - area_txt - pad
-        foto_path = pasta / "fotos" / p["foto"]
-        if foto_path.exists():
-            img = recorte_garrafa(Image.open(foto_path), fw / fh).resize((fw, fh), Image.LANCZOS)
-            masc = Image.new("L", (fw, fh), 0)
-            ImageDraw.Draw(masc).rounded_rectangle((0, 0, fw - 1, fh - 1), 16, fill=255)
-            arte.paste(img, (box[0] + pad, box[1] + pad), masc)
+        rec = achar_recorte(pasta, p["foto"]) if usar_recorte else None
+        if rec:
+            area_txt = tam_nome + tam_preco + 30 + (26 if p.get("preco_de") else 0)
+            colar_recorte(arte, rec, (box[0] - 4, box[1] - 6, box[2] + 4, box[3] - area_txt - 6))
+            d = ImageDraw.Draw(arte)
+            pad, fh = 8, bh - area_txt - 8
         else:
-            print(f"  aviso: foto não encontrada: {foto_path}")
-
+            # sombra leve + cartão
+            sombra = Image.new("RGBA", arte.size, (0, 0, 0, 0))
+            ImageDraw.Draw(sombra).rounded_rectangle((box[0], box[1] + 6, box[2], box[3] + 6), 22, fill=(20, 40, 80, 60))
+            arte.alpha_composite(sombra.filter(ImageFilter.GaussianBlur(8)))
+            d = ImageDraw.Draw(arte)
+            d.rounded_rectangle(box, 22, fill=cor(c["cartao"]))
+            pad = 8
+            tam_nome = 22 if formato == "feed" else 26
+            tam_preco = 42 if formato == "feed" else 52
+            area_txt = tam_nome + tam_preco + 30 + (26 if p.get("preco_de") else 0)
+            fw, fh = bw - 2 * pad, bh - area_txt - pad
+            foto_path = pasta / "fotos" / p["foto"]
+            if foto_path.exists():
+                img = recorte_garrafa(Image.open(foto_path), fw / fh).resize((fw, fh), Image.LANCZOS)
+                masc = Image.new("L", (fw, fh), 0)
+                ImageDraw.Draw(masc).rounded_rectangle((0, 0, fw - 1, fh - 1), 16, fill=255)
+                arte.paste(img, (box[0] + pad, box[1] + pad), masc)
+            else:
+                print(f"  aviso: foto não encontrada: {foto_path}")
         # selo
         if p.get("selo"):
             fs = fonte(26 if formato == "feed" else 30, "Black")
@@ -127,8 +166,17 @@ def gerar(marca, camp, pasta, formato):
         d.text(((box[0] + box[2]) / 2, ty), p["nome"], font=fn, fill=cor(c["texto_cartao"]), anchor="mt")
         base = box[3] - 10
         preco = preco_br(p["preco_por"]) if p.get("preco_por") not in (None, "") else "R$ ?"
-        fp = caber(d, preco, "Black", larg, tam_preco)
-        d.text(((box[0] + box[2]) / 2, base), preco, font=fp, fill=cor(c["texto_cartao"]), anchor="mb")
+        if rec:  # preço numa pílula azul com texto creme
+            fp = caber(d, preco, "Black", larg - 30, tam_preco - 6)
+            tw = d.textlength(preco, font=fp)
+            cx = (box[0] + box[2]) / 2
+            d.rounded_rectangle((cx - tw / 2 - 16, base - fp.size - 14, cx + tw / 2 + 16, base + 4), 30,
+                                fill=cor(c["destaque"]))
+            d.text((cx, base - 4), preco, font=fp, fill=cor(c["texto_destaque"]), anchor="mb")
+            base -= 8
+        else:
+            fp = caber(d, preco, "Black", larg, tam_preco)
+            d.text(((box[0] + box[2]) / 2, base), preco, font=fp, fill=cor(c["texto_cartao"]), anchor="mb")
         if p.get("preco_de"):
             txt = preco_br(p["preco_de"])
             fd = fonte(20 if formato == "feed" else 24, "SemiBold")

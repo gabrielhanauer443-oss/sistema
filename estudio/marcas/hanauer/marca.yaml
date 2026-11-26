@@ -22,11 +22,16 @@ temas:
   gelo:
     logo: marcas/hanauer/logo-azul.png
     cores:
-      fundo_topo: "#F4F8FD"
-      fundo_base: "#D3E0F0"
+      fundo_topo: "#F1F5FA"
+      fundo_base: "#DCE6F2"
       texto: "#233F6E"
       texto_suave: "#4D6389"
       destaque: "#233F6E"
       texto_destaque: "#F4F4EC"
       cartao: "#FFFFFF"
       texto_cartao: "#233F6E"
+    relevo:                          # fundo com monograma + nome em relevo (bem suave)
+      monograma: marcas/hanauer/monograma.png
+      nome: marcas/hanauer/nome.png
+      passo: 300
+      forca: 0.5                     # 0 = some, 1 = bem marcado

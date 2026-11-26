@@ -2,3 +2,4 @@ saida/
 __pycache__/
 campanhas/*/fotos/*
 !campanhas/*/fotos/.gitkeep
+campanhas/*/recortes/
