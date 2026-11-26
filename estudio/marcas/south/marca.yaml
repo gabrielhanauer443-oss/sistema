@@ -1,0 +1,13 @@
+# South Import's (@southimports_sl), loja de iPhone e Apple
+# Itens com [CONFIRMAR] ainda não foram confirmados pelo Gabriel.
+nome: South Import's
+logo: marcas/south/logo.png          # logo pequeno (113px) tirado do sistema; troque por um maior se tiver
+contato: "@southimports_sl"          # [CONFIRMAR] adicionar WhatsApp
+cores:                               # preto + dourado do logo
+  fundo_topo: "#1d1d21"
+  fundo_base: "#0d0d0f"
+  texto: "#ffffff"
+  texto_suave: "#9c9ba2"
+  destaque: "#E8B332"
+  texto_destaque: "#1a1205"
+avisos_obrigatorios: []

@@ -1,0 +1,16 @@
+# Hanauer Bebidas e Importados
+# Itens com [CONFIRMAR] ainda não foram confirmados pelo Gabriel.
+nome: Hanauer Bebidas e Importados
+logo: marcas/hanauer/logo.png        # coloque o logo aqui (PNG com fundo transparente)
+contato: ""                          # [CONFIRMAR] WhatsApp / @ do Instagram / endereço
+cores:                               # [CONFIRMAR] provisório: preto e dourado
+  fundo_topo: "#1a1a1a"
+  fundo_base: "#000000"
+  texto: "#ffffff"
+  texto_suave: "#b9b9b9"
+  destaque: "#E8B332"
+  texto_destaque: "#111111"
+# Bebida alcoólica: estes avisos vão em TODA arte (exigência legal/CONAR). Não remover.
+avisos_obrigatorios:
+  - "BEBA COM MODERAÇÃO."
+  - "VENDA PROIBIDA PARA MENORES DE 18 ANOS. SE BEBER, NÃO DIRIJA."

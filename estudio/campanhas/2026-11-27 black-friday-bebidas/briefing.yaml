@@ -1,0 +1,13 @@
+# Black Friday Hanauer, 27/11/2026
+# [CONFIRMAR] produtos, fotos e preços: o Gabriel vai colocar as fotos em fotos/ e passar os preços.
+marca: hanauer
+titulo: "Black Friday"
+subtitulo: "Só amanhã, 27/11"
+validade: "Válido em 27/11/2026 ou enquanto durar o estoque"
+formatos: [feed, story]
+produtos:
+  - nome: "[CONFIRMAR] Produto 1"
+    foto: produto1.png
+    preco_de: "R$ 00,00"
+    preco_por: "R$ 00,00"
+    selo: ""

@@ -1,0 +1,12 @@
+# Copie esta pasta, renomeie para "AAAA-MM-DD nome-da-campanha" e preencha.
+marca: hanauer            # hanauer ou south
+titulo: "Black Friday"     # texto grande no topo
+subtitulo: "Só amanhã"      # linha menor abaixo do título (pode deixar vazio)
+validade: "Válido até 27/11 ou enquanto durar o estoque"
+formatos: [feed, story]    # feed = 1080x1350 (4:5), story = 1080x1920 (9:16)
+produtos:
+  - nome: "Nome do produto 750ml"
+    foto: produto1.png     # arquivo dentro de fotos/
+    preco_de: 99.90        # preço normal (some do layout se apagar a linha)
+    preco_por: 79.90       # preço da promoção
+    selo: "-20%"           # etiqueta no canto (opcional)
