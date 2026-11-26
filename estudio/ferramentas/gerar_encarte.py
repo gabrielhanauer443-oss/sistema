@@ -26,13 +26,17 @@ def fundo_marca(marca, w, h):
     rel = marca.get("relevo")
     if rel:
         return fundo_relevo(w, h, c["fundo_topo"], c["fundo_base"], RAIZ / rel["monograma"],
-                            RAIZ / rel["nome"] if rel.get("nome") else None, rel.get("passo", 260), rel.get("forca", 1.0))
+                            RAIZ / rel["nome"] if rel.get("nome") else None, rel.get("passo", 260), rel.get("forca", 1.0),
+                            **{"cor_" + k: cor(rel[k]) for k in ("luz", "sombra", "face") if rel.get(k)})
     return fundo(w, h, cor(c["fundo_topo"]), cor(c["fundo_base"])).convert("RGBA")
 
 
 def achar_recorte(pasta, foto):
     p = pasta / "recortes" / (Path(foto).stem + ".png")
     return p if p.exists() else None
+
+
+BRILHO = None  # cor do brilho atrás das garrafas (definida pelo tema)
 
 
 def colar_recorte(arte, rec, caixa, sombra=True):
@@ -42,6 +46,12 @@ def colar_recorte(arte, rec, caixa, sombra=True):
     img.thumbnail((x1 - x0, y1 - y0), Image.LANCZOS)
     px = x0 + (x1 - x0 - img.width) // 2
     py = y1 - img.height
+    if BRILHO:  # halo de luz atrás da garrafa
+        g = Image.new("RGBA", arte.size, (0, 0, 0, 0))
+        r = max(img.width, img.height * 0.45)
+        cx, cy = px + img.width / 2, py + img.height * 0.55
+        ImageDraw.Draw(g).ellipse((cx - r * 0.6, cy - r * 0.75, cx + r * 0.6, cy + r * 0.75), fill=BRILHO + (110,))
+        arte.alpha_composite(g.filter(ImageFilter.GaussianBlur(r * 0.25)))
     if sombra:
         s = Image.new("RGBA", arte.size, (0, 0, 0, 0))
         ImageDraw.Draw(s).ellipse((px + img.width * 0.08, y1 - 14, px + img.width * 0.92, y1 + 14), fill=(20, 40, 80, 120))
@@ -69,6 +79,8 @@ def gerar(marca, camp, pasta, formato):
     c = dict(marca["cores"])
     c.setdefault("cartao", c["destaque"])
     c.setdefault("texto_cartao", c["texto_destaque"])
+    global BRILHO
+    BRILHO = cor(marca["brilho"]) if marca.get("brilho") else None
     arte = fundo_marca(marca, w, h)
     d = ImageDraw.Draw(arte)
     y = m + (60 if formato == "story" else 0)

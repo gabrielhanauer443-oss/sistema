@@ -4,7 +4,7 @@
 # Fora do encarte: gelo de coco (sem estoque); Jim Beam (sem preço);
 # Red Label 94,90 [CONFIRMAR]: não há foto de Red Label na pasta (só Blonde).
 marca: hanauer
-tema: gelo                 # fundo cor gelo com a marca em relevo + azul da marca
+tema: black                # Black Friday: fundo preto + relevo da marca (tema gelo = versão clara)
 recorte: true              # usa as garrafas recortadas (ferramentas/recortar.py)
 titulo: "Black Friday"
 subtitulo: "Só hoje, 27/11"

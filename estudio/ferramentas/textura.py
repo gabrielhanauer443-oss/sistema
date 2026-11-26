@@ -13,7 +13,7 @@ def _cor(hex_):
 
 
 def fundo_relevo(w, h, base="#EEF3F9", base2="#DCE6F2", monograma=None, nome=None,
-                 passo=260, forca=1.0):
+                 passo=260, forca=1.0, cor_luz=(255, 255, 255), cor_sombra=(35, 63, 110), cor_face=(35, 63, 110)):
     """Degradê gelo + padrão da marca em relevo (sombra embaixo/direita, luz em cima/esquerda)."""
     # degradê radial suave: centro mais claro
     yy, xx = np.mgrid[0:h, 0:w]
@@ -52,13 +52,13 @@ def fundo_relevo(w, h, base="#EEF3F9", base2="#DCE6F2", monograma=None, nome=Non
     a_sombra = ImageChops.subtract(sombra, masc).filter(ImageFilter.GaussianBlur(1.5)).point(lambda v: int(v * 0.30 * forca))
     a_luz = ImageChops.subtract(luz, masc).filter(ImageFilter.GaussianBlur(1.5)).point(lambda v: int(v * 0.85 * forca))
     a_face = masc.point(lambda v: int(v * 0.05 * forca))
-    camada = Image.new("RGBA", (w, h), (35, 63, 110, 0))
+    camada = Image.new("RGBA", (w, h), tuple(cor_sombra) + (0,))
     camada.putalpha(a_sombra)
     arte.alpha_composite(camada)
-    camada = Image.new("RGBA", (w, h), (255, 255, 255, 0))
+    camada = Image.new("RGBA", (w, h), tuple(cor_luz) + (0,))
     camada.putalpha(a_luz)
     arte.alpha_composite(camada)
-    camada = Image.new("RGBA", (w, h), (35, 63, 110, 0))
+    camada = Image.new("RGBA", (w, h), tuple(cor_face) + (0,))
     camada.putalpha(a_face)
     arte.alpha_composite(camada)
     return arte

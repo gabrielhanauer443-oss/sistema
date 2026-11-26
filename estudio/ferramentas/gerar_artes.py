@@ -125,8 +125,9 @@ def aplicar_tema(marca, camp):
         marca = dict(marca, cores=dict(marca["cores"], **t.get("cores", {})))
         if t.get("logo"):
             marca["logo"] = t["logo"]
-        if t.get("relevo"):
-            marca["relevo"] = t["relevo"]
+        for k in ("relevo", "brilho"):
+            if t.get(k):
+                marca[k] = t[k]
     return marca
 
 

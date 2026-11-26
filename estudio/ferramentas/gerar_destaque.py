@@ -32,6 +32,8 @@ def gerar(marca, camp, pasta, formato):
     c = dict(marca["cores"])
     c.setdefault("cartao", c["destaque"])
     c.setdefault("texto_cartao", c["texto_destaque"])
+    import gerar_encarte
+    gerar_encarte.BRILHO = cor(marca["brilho"]) if marca.get("brilho") else None
     arte = fundo_marca(marca, w, h)
     d = ImageDraw.Draw(arte)
     story = formato == "story"

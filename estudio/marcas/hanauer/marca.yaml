@@ -35,3 +35,23 @@ temas:
       nome: marcas/hanauer/nome.png
       passo: 300
       forca: 0.5                     # 0 = some, 1 = bem marcado
+  black:                             # Black Friday: fundo preto, relevo escuro, brilho azul atrás das garrafas
+    logo: marcas/hanauer/logo.png
+    brilho: "#2E5BB8"
+    cores:
+      fundo_topo: "#141A26"
+      fundo_base: "#000000"
+      texto: "#FFFFFF"
+      texto_suave: "#8E9AB0"
+      destaque: "#F4F4EC"
+      texto_destaque: "#14284A"
+      cartao: "#2B4C82"
+      texto_cartao: "#FFFFFF"
+    relevo:
+      monograma: marcas/hanauer/monograma.png
+      nome: marcas/hanauer/nome.png
+      passo: 300
+      forca: 0.55
+      luz: "#3A4560"
+      sombra: "#000000"
+      face: "#1E2638"
