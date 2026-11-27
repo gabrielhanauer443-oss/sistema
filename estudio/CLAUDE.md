@@ -17,6 +17,7 @@ Ele fala algo como "acessa a pasta `campanhas/2026-11-27 black-friday-bebidas`".
    - `python ferramentas/gerar_encarte.py "<pasta>"`: **um encarte com todos os produtos** (é o que ele mais usa).
    - `python ferramentas/gerar_destaque.py "<pasta>"`: arte exclusiva de um produto/linha (seção `destaque:` do briefing).
    - `python ferramentas/gerar_artes.py "<pasta>"`: uma arte por produto.
+   - `python ferramentas/gerar_story_foto.py "<pasta>"`: story editado em cima de UMA foto real (seção `story_foto:`). Ele prefere foto real da loja a montagem com imagem genérica.
    - `tema: gelo` = fundo claro com relevo (promo do dia a dia); `tema: black` = fundo preto (Black Friday).
 6. Abrir 1 ou 2 artes geradas e conferir: texto cortado, foto pequena demais, preço errado. Corrigir antes de entregar.
 7. Escrever a legenda do post e do story em `<pasta>/legenda.txt`.

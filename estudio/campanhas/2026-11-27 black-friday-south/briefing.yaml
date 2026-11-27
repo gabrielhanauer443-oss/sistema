@@ -21,3 +21,15 @@ destaque:
   preco_por: "R$ 500 OFF*"
   rotulo_preco: "no iPhone 18 Pro Max 256 GB"
   faixa: "Confira as cores disponíveis no direct"
+
+# Story editado em cima da foto real (IMG_9799.HEIC, pasta "black da south"), gerar_story_foto.py
+story_foto:
+  foto: IMG_9799.HEIC
+  topo: 230
+  chapeu: "Black Friday"
+  oferta: "R$ 500 OFF*"
+  produto: "iPhone 18 Pro Max"
+  detalhe: "256 GB"
+  chamada: "Confira as cores no direct"
+  borrar:                       # rosto da pessoa ao fundo [CONFIRMAR se precisa]
+    - [0.30, 0.00, 0.74, 0.27]
