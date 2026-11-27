@@ -108,14 +108,32 @@ def v_editorial(marca, camp, pasta, ouro):
 def v_apple(marca, camp, pasta, ouro):
     s = camp["story_foto"]
     arte = base_foto(pasta, s, escurecer_topo=235)
-    d = ImageDraw.Draw(arte)
     x = 80
-    d.text((x, 140), "Black Friday.", font=F("InterTight.ttf", 76, "SemiBold"), fill=BRANCO, anchor="lt")
-    d.text((x, 228), "Na South Import's.", font=F("InterTight.ttf", 76, "SemiBold"), fill=(176, 170, 160), anchor="lt")
+    f_tit = F("InterTight.ttf", 76, "SemiBold")
+    # sombra suave atrás do título, para ler mesmo em cima da caixa clara
+    sombra = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    ds = ImageDraw.Draw(sombra)
+    for yy_, t in ((140, "Black Friday."), (228, "Na South Import's.")):
+        ds.text((x + 2, yy_ + 4), t, font=f_tit, fill=(0, 0, 0, 210), anchor="lt")
+    arte.alpha_composite(sombra.filter(ImageFilter.GaussianBlur(14)))
+    d = ImageDraw.Draw(arte)
+    d.text((x, 140), "Black Friday.", font=f_tit, fill=BRANCO, anchor="lt")
+    d.text((x, 228), "Na South Import's.", font=f_tit, fill=(196, 190, 180), anchor="lt")
     base = regras_rodape(d, camp, F("InterTight.ttf", 18, "Regular"), x=x, alinhar="esq", larg=W - 160) - 36
-    d.text((x, base), s["chamada"] + "  ›", font=F("InterTight.ttf", 34, "Medium"), fill=ouro, anchor="lb")
-    base -= 84
-    d.text((x - 6, base), "R$ 500 off.", font=F("InterTight.ttf", 150, "Bold"), fill=BRANCO, anchor="ls")
+    fc = F("InterTight.ttf", 32, "Medium")
+    txt = s["chamada"] + "  ›"
+    if s.get("cor_botao"):  # letreiro: pílula cheia na cor pedida
+        tw = d.textlength(txt, font=fc)
+        d.rounded_rectangle((x, base - 74, x + tw + 64, base), 37, fill=cor(s["cor_botao"]))
+        d.text((x + 32, base - 37), txt, font=fc, fill=cor(s.get("texto_botao", "#FFFFFF")), anchor="lm")
+        base -= 110
+    else:
+        d.text((x, base), txt, font=fc, fill=ouro, anchor="lb")
+        base -= 84
+    fo = F("InterTight.ttf", 150, "Bold")
+    d.text((x - 6, base), "R$ 500 off.", font=fo, fill=BRANCO, anchor="ls")
+    wo = d.textlength("R$ 500 off.", font=fo)
+    d.text((x - 6 + wo + 2, base - 70), "*", font=F("InterTight.ttf", 60, "Medium"), fill=BRANCO, anchor="ls")
     base -= 156
     d.text((x, base), f"{s['produto']} {s['detalhe']}.", font=F("InterTight.ttf", 46, "Medium"), fill=CINZA, anchor="ls")
     return arte

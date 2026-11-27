@@ -30,6 +30,7 @@ Campanha nova: copiar `campanhas/_modelo/` para `campanhas/AAAA-MM-DD nome/`.
 - Respostas curtas e em português, porque ele muitas vezes está no celular.
 - Preço grande e legível; o produto é o centro da arte.
 - Hanauer: ele prefere o tema **gelo** com **garrafas recortadas** (sem o fundo da foto) sobre fundo cor gelo com o "H" e o nome HANAUER repetidos em relevo bem suave, quase transparente (força em `marcas/hanauer/marca.yaml`, `relevo.forca`). Preço em pílula azul. Visual "imersivo", não cartão com foto.
+- **South (story)**: o estilo que ele escolheu é a variação "apple" de `ferramentas/story_variacoes.py` (Inter Tight, alinhado à esquerda, "Black Friday. / Na South Import's.", oferta grande em branco, letreiro em Burgundy #800020). Ele rejeitou Anton ("muito IA") e o estilo Cormorant. Cor "Burgundy": usar #800020 (o que aparece no Google), não tirar da foto.
 - **Black Friday** (e campanhas "black"): `tema: black` = fundo preto com o relevo da marca escuro, brilho azul atrás das garrafas e preço em pílula creme. Ele achou a versão clara sem cara de Black Friday ("mais black mesmo").
 - Ele passa os preços falando, em sequência; ir montando e perguntar só o que faltar. Produto sem preço fica fora (`fora: true`), não inventar.
 - Quando aparecer outra pessoa em foto ou vídeo, perguntar se deve borrar o rosto (ele costuma pedir para borrar clientes e fornecedores). O próprio Gabriel aparece em fotos da South: o rosto dele fica visível.

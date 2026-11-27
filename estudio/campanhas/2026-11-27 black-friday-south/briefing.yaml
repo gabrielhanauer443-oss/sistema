@@ -24,17 +24,17 @@ destaque:
 
 # Story editado em cima da foto real (IMG_9799.HEIC, pasta "black da south"), gerar_story_foto.py
 # Na foto é o próprio Gabriel: NÃO borrar o rosto.
-# Versão escolhida (27/11): a 1ª do story (layout clássico com letreiro), com o Burgundy do Google (#800020).
+# Versão escolhida (27/11): variação 2 "apple" (Inter Tight, alinhada à esquerda) com letreiro Burgundy #800020.
 # A versão "elegante" e as 5 variações (story_variacoes.py) ele não quis.
 story_foto:
-  estilo: classico
+  estilo: apple                 # versão escolhida (27/11): variação 2 "apple" de story_variacoes.py
   foto: IMG_9799.HEIC
   topo: 230
   chapeu: "Black Friday"
   oferta: "R$ 500 OFF*"
   produto: "iPhone 18 Pro Max"
   detalhe: "256 GB"
-  chamada: "Confira as cores no direct"
+  chamada: "Confira as cores disponíveis no direct"
   cor_oferta: "#800020"         # Burgundy (cor padrão que aparece no Google)
   cor_botao: "#800020"
   texto_botao: "#FFFFFF"
