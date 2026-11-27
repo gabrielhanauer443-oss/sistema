@@ -148,5 +148,131 @@ def main():
     print("ok", out)
 
 
+
+# ---------------------------------------------------------------------------
+# Estilo "elegante": serifa fina (Cormorant Garamond) + sans discreta (Inter),
+# letras espaçadas, linhas finas douradas e foto respirando. Use `estilo: elegante`.
+FONTES = Path(__file__).resolve().parent / "fontes"
+
+
+def f_serif(tam, peso="Light", italico=False):
+    from PIL import ImageFont
+    f = ImageFont.truetype(str(FONTES / ("CormorantGaramond-Italic.ttf" if italico else "CormorantGaramond.ttf")), tam)
+    f.set_variation_by_name(peso + (" Italic" if italico and peso != "Italic" else "") if italico else peso)
+    return f
+
+
+def f_sans(tam, peso="Light"):
+    from PIL import ImageFont
+    f = ImageFont.truetype(str(FONTES / "Inter.ttf"), tam)
+    f.set_variation_by_name(peso)
+    return f
+
+
+def texto_espacado(d, xy, txt, font, fill, espaco, anchor="mt"):
+    """Escreve com espaçamento entre letras (tracking), centralizado em x."""
+    larg = sum(d.textlength(ch, font=font) for ch in txt) + espaco * (len(txt) - 1)
+    x, y = xy
+    x -= larg / 2
+    for ch in txt:
+        d.text((x, y), ch, font=font, fill=fill, anchor="l" + anchor[1])
+        x += d.textlength(ch, font=font) + espaco
+    return larg
+
+
+def gerar_elegante(marca, camp, pasta):
+    s = camp["story_foto"]
+    c = marca["cores"]
+    ouro = cor(c["destaque"])
+    branco = (246, 243, 236)
+    cinza = (165, 160, 150)
+    arte = Image.new("RGBA", (W, H), (8, 8, 8, 255))
+
+    foto = tratar_foto(Image.open(pasta / "fotos" / s["foto"]), s.get("borrar"))
+    fh = int(foto.height * W / foto.width)
+    foto = foto.resize((W, fh), Image.LANCZOS).convert("RGBA")
+    topo = s.get("topo", 0)
+    yv = np.arange(fh)
+    alfa = (np.clip((fh - yv) / 520, 0, 1) ** 1.3 * 255).astype(np.uint8)
+    foto.putalpha(Image.fromarray(np.repeat(alfa[:, None], W, axis=1), "L"))
+    arte.alpha_composite(foto, (0, topo))
+
+    # degradês suaves: um véu leve no topo (logo) e preto profundo embaixo (texto)
+    yy = np.arange(H)
+    g = np.clip(1 - yy / 360, 0, 1) ** 1.6 * 165 + np.clip((yy - 1040) / 540, 0, 1) ** 1.25 * 248
+    veu = Image.new("RGBA", (W, H), (5, 5, 5, 0))
+    veu.putalpha(Image.fromarray(np.repeat(np.clip(g, 0, 255).astype(np.uint8)[:, None], W, axis=1), "L"))
+    arte.alpha_composite(veu)
+    d = ImageDraw.Draw(arte)
+
+    # topo em duas pontas (deixa o centro livre para o rosto): marca à esquerda, "Black Friday" à direita
+    y = 150
+    mono = RAIZ / marca.get("monograma", "marcas/south/monograma.png")
+    x = 70
+    if mono.exists():
+        mg = Image.open(mono).convert("RGBA")
+        mg.thumbnail((54, 54))
+        arte.alpha_composite(mg, (x, y - mg.height // 2))
+        x += mg.width + 18
+    fn = f_sans(19, "Medium")
+    nome = marca["nome"].upper()
+    larg = sum(d.textlength(ch, font=fn) for ch in nome) + 6 * (len(nome) - 1)
+    texto_espacado(d, (x + larg / 2, y), nome, fn, ouro, 6, anchor="mm")
+    ch = s.get("chapeu", "").upper()
+    fc = f_sans(19, "Light")
+    larg = sum(d.textlength(c_, font=fc) for c_ in ch) + 8 * (len(ch) - 1)
+    texto_espacado(d, (W - 70 - larg / 2, y), ch, fc, branco, 8, anchor="mm")
+
+    # base, de baixo para cima
+    base = H - 250
+    regras = []
+    for linha in camp.get("regras", []):
+        regras += quebrar(d, linha, f_sans(18, "Light"), W - 180)
+    for linha in reversed(regras):
+        d.text((W / 2, base), linha, font=f_sans(18, "Light"), fill=cinza, anchor="mb")
+        base -= 26
+    base -= 34
+    if s.get("chamada"):
+        fc = f_sans(21, "Regular")
+        txt = s["chamada"].upper()
+        larg = sum(d.textlength(ch, font=fc) for ch in txt) + 4 * (len(txt) - 1)
+        d.rounded_rectangle((W / 2 - larg / 2 - 36, base - 62, W / 2 + larg / 2 + 36, base), 31, outline=ouro, width=2)
+        texto_espacado(d, (W / 2, base - 31), txt, fc, ouro, 4, anchor="mm")
+        base -= 100
+    if s.get("nota_oferta"):
+        d.text((W / 2, base), s["nota_oferta"], font=f_serif(40, "Italic", italico=True), fill=ouro, anchor="mb")
+        base -= 76
+    # oferta: "R$ 500" em serifa fina + "off" em itálico dourado
+    f_big = f_serif(230, "Light")
+    f_off = f_serif(120, "Light", italico=True)
+    valor, sufixo = s.get("oferta_valor", "R$ 500"), s.get("oferta_sufixo", "off")
+    wv, wo = d.textlength(valor, font=f_big, features=["lnum"]), d.textlength(sufixo, font=f_off)
+    x0 = W / 2 - (wv + 18 + wo) / 2
+    d.text((x0, base), valor, font=f_big, fill=branco, anchor="ls", features=["lnum"])
+    d.text((x0 + wv + 18, base), sufixo, font=f_off, fill=ouro, anchor="ls", features=["lnum"])
+    base -= f_big.size * 0.78 + 26
+    if s.get("produto"):
+        linha = s["produto"] + (f"  ·  {s['detalhe']}" if s.get("detalhe") else "")
+        texto_espacado(d, (W / 2, base), linha, f_sans(30, "Light"), branco, 3, anchor="mb")
+    return arte.convert("RGB")
+
+
+_main_original = main
+
+
+def main():  # noqa: F811
+    if len(sys.argv) < 2:
+        sys.exit(__doc__)
+    pasta = Path(sys.argv[1]).resolve()
+    camp = yaml.safe_load((pasta / "briefing.yaml").read_text(encoding="utf-8"))
+    if camp.get("story_foto", {}).get("estilo") != "elegante":
+        return _main_original()
+    marca = aplicar_tema(yaml.safe_load((RAIZ / "marcas" / camp["marca"] / "marca.yaml").read_text(encoding="utf-8")), camp)
+    (pasta / "saida").mkdir(exist_ok=True)
+    out = pasta / "saida" / "story-foto.jpg"
+    gerar_elegante(marca, camp, pasta).save(out, quality=94)
+    print("ok", out)
+
+
 if __name__ == "__main__":
     main()

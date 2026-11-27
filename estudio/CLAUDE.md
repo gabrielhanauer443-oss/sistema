@@ -17,7 +17,7 @@ Ele fala algo como "acessa a pasta `campanhas/2026-11-27 black-friday-bebidas`".
    - `python ferramentas/gerar_encarte.py "<pasta>"`: **um encarte com todos os produtos** (é o que ele mais usa).
    - `python ferramentas/gerar_destaque.py "<pasta>"`: arte exclusiva de um produto/linha (seção `destaque:` do briefing).
    - `python ferramentas/gerar_artes.py "<pasta>"`: uma arte por produto.
-   - `python ferramentas/gerar_story_foto.py "<pasta>"`: story editado em cima de UMA foto real (seção `story_foto:`). Ele prefere foto real da loja a montagem com imagem genérica.
+   - `python ferramentas/gerar_story_foto.py "<pasta>"`: story editado em cima de UMA foto real (seção `story_foto:`). Ele prefere foto real da loja a montagem com imagem genérica. `estilo: elegante` = serifa fina (Cormorant) + Inter com letras espaçadas e linhas douradas: ele achou Anton/Montserrat "muito IA" e quer subir o padrão (elegante, premium).
    - `tema: gelo` = fundo claro com relevo (promo do dia a dia); `tema: black` = fundo preto (Black Friday).
 6. Abrir 1 ou 2 artes geradas e conferir: texto cortado, foto pequena demais, preço errado. Corrigir antes de entregar.
 7. Escrever a legenda do post e do story em `<pasta>/legenda.txt`.
@@ -32,7 +32,7 @@ Campanha nova: copiar `campanhas/_modelo/` para `campanhas/AAAA-MM-DD nome/`.
 - Hanauer: ele prefere o tema **gelo** com **garrafas recortadas** (sem o fundo da foto) sobre fundo cor gelo com o "H" e o nome HANAUER repetidos em relevo bem suave, quase transparente (força em `marcas/hanauer/marca.yaml`, `relevo.forca`). Preço em pílula azul. Visual "imersivo", não cartão com foto.
 - **Black Friday** (e campanhas "black"): `tema: black` = fundo preto com o relevo da marca escuro, brilho azul atrás das garrafas e preço em pílula creme. Ele achou a versão clara sem cara de Black Friday ("mais black mesmo").
 - Ele passa os preços falando, em sequência; ir montando e perguntar só o que faltar. Produto sem preço fica fora (`fora: true`), não inventar.
-- Quando aparecer outra pessoa em foto ou vídeo, perguntar se deve borrar o rosto (ele costuma pedir para borrar clientes e fornecedores).
+- Quando aparecer outra pessoa em foto ou vídeo, perguntar se deve borrar o rosto (ele costuma pedir para borrar clientes e fornecedores). O próprio Gabriel aparece em fotos da South: o rosto dele fica visível.
 
 ## Regras fixas
 

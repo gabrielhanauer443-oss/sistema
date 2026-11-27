@@ -23,13 +23,15 @@ destaque:
   faixa: "Confira as cores disponíveis no direct"
 
 # Story editado em cima da foto real (IMG_9799.HEIC, pasta "black da south"), gerar_story_foto.py
+# Na foto é o próprio Gabriel: NÃO borrar o rosto.
 story_foto:
+  estilo: elegante
   foto: IMG_9799.HEIC
-  topo: 230
+  topo: 0
   chapeu: "Black Friday"
-  oferta: "R$ 500 OFF*"
   produto: "iPhone 18 Pro Max"
   detalhe: "256 GB"
-  chamada: "Confira as cores no direct"
-  borrar:                       # rosto da pessoa ao fundo [CONFIRMAR se precisa]
-    - [0.30, 0.00, 0.74, 0.27]
+  oferta_valor: "R$ 500"
+  oferta_sufixo: "off*"
+  nota_oferta: "de desconto, só na Black Friday"
+  chamada: "Confira as cores disponíveis no direct"
