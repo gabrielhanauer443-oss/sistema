@@ -106,7 +106,7 @@ def gerar(marca, camp, pasta):
     ImageDraw.Draw(sombra).text((W / 2 + 4, y0 + 8), s["oferta"], font=f, fill=(0, 0, 0, 200), anchor="mt")
     arte.alpha_composite(sombra.filter(ImageFilter.GaussianBlur(10)))
     d = ImageDraw.Draw(arte)
-    d.text((W / 2, y0), s["oferta"], font=f, fill=cor(c["destaque"]), anchor="mt")
+    d.text((W / 2, y0), s["oferta"], font=f, fill=cor(s.get("cor_oferta", c["destaque"])), anchor="mt")
     y0 += f.size + 10
     if s.get("asterisco_nota"):
         d.text((W / 2, y0), s["asterisco_nota"], font=fonte(26, "SemiBold"), fill=cor(c["texto"]), anchor="mt")
@@ -124,8 +124,9 @@ def gerar(marca, camp, pasta):
         fc = fonte(32, "Bold")
         txt = s["chamada"].upper()
         tw = d.textlength(txt, font=fc)
-        d.rounded_rectangle((W / 2 - tw / 2 - 34, base - 70, W / 2 + tw / 2 + 34, base), 35, fill=cor(c["destaque"]))
-        d.text((W / 2, base - 35), txt, font=fc, fill=cor(c["texto_destaque"]), anchor="mm")
+        d.rounded_rectangle((W / 2 - tw / 2 - 34, base - 70, W / 2 + tw / 2 + 34, base), 35,
+                            fill=cor(s.get("cor_botao", c["destaque"])))
+        d.text((W / 2, base - 35), txt, font=fc, fill=cor(s.get("texto_botao", c["texto_destaque"])), anchor="mm")
         base -= 96
     if s.get("detalhe"):
         d.text((W / 2, base), s["detalhe"], font=fonte(40, "SemiBold"), fill=cor(c["texto"]), anchor="mb")
