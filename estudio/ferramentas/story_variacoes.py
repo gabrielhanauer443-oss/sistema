@@ -81,6 +81,8 @@ def regras_rodape(d, camp, fonte_, x=None, base=H - 250, larg=W - 180, alinhar="
 # 1 ---------------------------------------------------------------- editorial
 def v_editorial(marca, camp, pasta, ouro):
     s = camp["story_foto"]
+    # cores opcionais no briefing: cor_oferta (texto grande) e cor_botao (letreiro do botão)
+    cor_of = cor(s["cor_oferta"]) if s.get("cor_oferta") else ouro
     arte = base_foto(pasta, s)
     d = ImageDraw.Draw(arte)
     texto_espacado(d, (W / 2, 150), "BLACK FRIDAY  —  SOUTH IMPORT'S", F("InterTight.ttf", 20, "Medium"), BRANCO, 6, "mm")
@@ -88,10 +90,15 @@ def v_editorial(marca, camp, pasta, ouro):
     fc = F("InterTight.ttf", 22, "Medium")
     txt = s["chamada"].upper()
     larg = sum(d.textlength(c, font=fc) for c in txt) + 4 * (len(txt) - 1)
-    d.line((W / 2 - larg / 2, base, W / 2 + larg / 2, base), fill=ouro, width=2)
-    texto_espacado(d, (W / 2, base - 22), txt, fc, ouro, 4, "mb")
-    base -= 110
-    d.text((W / 2, base), "R$ 500 off*", font=F("PlayfairDisplay.ttf", 170, "Regular"), fill=ouro, anchor="ms", features=["lnum"])
+    if s.get("cor_botao"):  # letreiro: pílula cheia na cor, texto creme
+        d.rounded_rectangle((W / 2 - larg / 2 - 38, base - 70, W / 2 + larg / 2 + 38, base), 35, fill=cor(s["cor_botao"]))
+        texto_espacado(d, (W / 2, base - 35), txt, fc, BRANCO, 4, "mm")
+        base -= 120
+    else:
+        d.line((W / 2 - larg / 2, base, W / 2 + larg / 2, base), fill=cor_of, width=2)
+        texto_espacado(d, (W / 2, base - 22), txt, fc, cor_of, 4, "mb")
+        base -= 110
+    d.text((W / 2, base), "R$ 500 off*", font=F("PlayfairDisplay.ttf", 170, "Regular"), fill=cor_of, anchor="ms", features=["lnum"])
     base -= 170
     d.text((W / 2, base), f"{s['produto']}, {s['detalhe']}", font=F("PlayfairDisplay-Italic.ttf", 58, "Italic"), fill=BRANCO, anchor="ms", features=["lnum"])
     return arte

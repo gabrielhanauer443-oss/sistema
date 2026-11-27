@@ -25,7 +25,9 @@ destaque:
 # Story editado em cima da foto real (IMG_9799.HEIC, pasta "black da south"), gerar_story_foto.py
 # Na foto é o próprio Gabriel: NÃO borrar o rosto.
 story_foto:
-  estilo: elegante
+  estilo: elegante             # versão escolhida: variação 1 "editorial" (story_variacoes.py)
+  cor_oferta: "#9B3A51"         # bordô do iPhone 18 Pro Max (Burgundy, tom #45232B na foto) clareado p/ ler no preto
+  cor_botao: "#6E2B3A"          # bordô fechado no letreiro do botão
   foto: IMG_9799.HEIC
   topo: 0
   chapeu: "Black Friday"
